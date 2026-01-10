@@ -1,23 +1,71 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from datetime import datetime
 from typing import Optional, Literal
 
 
-# === Генерация изображений (старое) ===
-class GenerationRequest(BaseModel):
-    prompt: str
-    negative_prompt: Optional[str] = None
+# === Пользователи ===
+class UserCreate(BaseModel):
+    email: EmailStr
+    username: str
+    password: str
 
 
-class GenerationResponse(BaseModel):
-    image_url: str
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    username: str
     created_at: datetime
 
+    class Config:
+        from_attributes = True
 
-# === Карточки AAC ===
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+# === Категории ===
+class CategoryCreate(BaseModel):
+    name: str
+    name_kk: Optional[str] = None
+    name_en: Optional[str] = None
+    icon: Optional[str] = None
+
+
+class CategoryResponse(BaseModel):
+    id: int
+    name: str
+    name_kk: Optional[str]
+    name_en: Optional[str]
+    icon: Optional[str]
+    user_id: Optional[int]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CategoryListResponse(BaseModel):
+    categories: list[CategoryResponse]
+    total: int
+
+
+# === Карточки ===
 class CardCreate(BaseModel):
     word: str
-    language: Literal["ru", "kk"] = "ru"  # русский или казахский
+    language: Literal["ru", "kk"] = "ru"
+    category_id: Optional[int] = None
+
+
+class CardUpdate(BaseModel):
+    is_favorite: Optional[bool] = None
+    category_id: Optional[int] = None
 
 
 class CardResponse(BaseModel):
@@ -26,6 +74,10 @@ class CardResponse(BaseModel):
     language: str
     translated_word: str
     image_base64: str
+    is_favorite: bool
+    usage_count: int
+    category_id: Optional[int]
+    user_id: int
     created_at: datetime
 
     class Config:
@@ -35,3 +87,14 @@ class CardResponse(BaseModel):
 class CardListResponse(BaseModel):
     cards: list[CardResponse]
     total: int
+
+
+# === TTS (Text-to-Speech) ===
+class TTSRequest(BaseModel):
+    text: str
+    language: Literal["ru", "kk", "en"] = "ru"
+
+
+class TTSResponse(BaseModel):
+    audio_base64: str
+    format: str = "mp3"
