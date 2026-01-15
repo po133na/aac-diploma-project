@@ -98,3 +98,34 @@ class TTSRequest(BaseModel):
 class TTSResponse(BaseModel):
     audio_base64: str
     format: str = "mp3"
+
+
+# === Фразы ===
+class PhraseCreate(BaseModel):
+    name: str
+    card_ids: list[int]  # [1, 5, 12, 8]
+
+
+class PhraseResponse(BaseModel):
+    id: int
+    name: str
+    card_ids: list[int]
+    user_id: int
+    usage_count: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PhraseListResponse(BaseModel):
+    phrases: list[PhraseResponse]
+    total: int
+
+
+class PhraseWithCardsResponse(BaseModel):
+    id: int
+    name: str
+    cards: list[CardResponse]  # Полные данные карточек
+    usage_count: int
+    created_at: datetime

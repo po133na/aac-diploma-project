@@ -13,10 +13,11 @@ from app.schemas import (
     UserCreate, UserLogin, UserResponse, Token,
     CategoryCreate, CategoryResponse, CategoryListResponse,
     CardCreate, CardUpdate, CardResponse, CardListResponse,
-    TTSRequest, TTSResponse
+    TTSRequest, TTSResponse,
+    PhraseCreate, PhraseResponse, PhraseListResponse, PhraseWithCardsResponse
 )
 from app.database import init_db, get_session
-from app.models import User, Category, Card
+from app.models import User, Category, Card, Phrase
 from app.translation import translate_to_english
 from app.auth import (
     get_password_hash, verify_password, create_access_token, get_current_user
@@ -117,7 +118,7 @@ async def login(user_data: UserLogin, session: AsyncSession = Depends(get_sessio
     if not user or not verify_password(user_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     
-    access_token = create_access_token(data={"sub": user.id})
+    access_token = create_access_token(data={"sub": str(user.id)})
     return Token(access_token=access_token)
 
 
@@ -359,3 +360,187 @@ async def speak(
         return TTSResponse(audio_base64=audio_base64)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== ФРАЗЫ ====================
+
+@app.post("/phrases", response_model=PhraseResponse)
+async def create_phrase(
+    phrase_data: PhraseCreate,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Создать фразу из карточек"""
+    # Проверяем что все карточки принадлежат пользователю
+    for card_id in phrase_data.card_ids:
+        result = await session.execute(
+            select(Card).where(Card.id == card_id, Card.user_id == current_user.id)
+        )
+        if not result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail=f"Card {card_id} not found")
+    
+    # Сохраняем ID карточек как строку
+    card_ids_str = ",".join(map(str, phrase_data.card_ids))
+    
+    phrase = Phrase(
+        name=phrase_data.name,
+        card_ids=card_ids_str,
+        user_id=current_user.id
+    )
+    session.add(phrase)
+    await session.commit()
+    await session.refresh(phrase)
+    
+    # Возвращаем с преобразованием card_ids обратно в список
+    return PhraseResponse(
+        id=phrase.id,
+        name=phrase.name,
+        card_ids=phrase_data.card_ids,
+        user_id=phrase.user_id,
+        usage_count=phrase.usage_count,
+        created_at=phrase.created_at
+    )
+
+
+@app.get("/phrases", response_model=PhraseListResponse)
+async def get_phrases(
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Получить все фразы пользователя"""
+    result = await session.execute(
+        select(Phrase)
+        .where(Phrase.user_id == current_user.id)
+        .order_by(Phrase.usage_count.desc(), Phrase.created_at.desc())
+    )
+    phrases = result.scalars().all()
+    
+    phrase_responses = []
+    for phrase in phrases:
+        card_ids = [int(x) for x in phrase.card_ids.split(",") if x]
+        phrase_responses.append(PhraseResponse(
+            id=phrase.id,
+            name=phrase.name,
+            card_ids=card_ids,
+            user_id=phrase.user_id,
+            usage_count=phrase.usage_count,
+            created_at=phrase.created_at
+        ))
+    
+    return PhraseListResponse(phrases=phrase_responses, total=len(phrase_responses))
+
+
+@app.get("/phrases/{phrase_id}", response_model=PhraseWithCardsResponse)
+async def get_phrase(
+    phrase_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Получить фразу с полными данными карточек"""
+    result = await session.execute(
+        select(Phrase).where(Phrase.id == phrase_id, Phrase.user_id == current_user.id)
+    )
+    phrase = result.scalar_one_or_none()
+    
+    if not phrase:
+        raise HTTPException(status_code=404, detail="Phrase not found")
+    
+    # Получаем карточки
+    card_ids = [int(x) for x in phrase.card_ids.split(",") if x]
+    cards = []
+    for card_id in card_ids:
+        result = await session.execute(select(Card).where(Card.id == card_id))
+        card = result.scalar_one_or_none()
+        if card:
+            cards.append(card)
+    
+    return PhraseWithCardsResponse(
+        id=phrase.id,
+        name=phrase.name,
+        cards=cards,
+        usage_count=phrase.usage_count,
+        created_at=phrase.created_at
+    )
+
+
+@app.post("/phrases/{phrase_id}/use", response_model=PhraseResponse)
+async def use_phrase(
+    phrase_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Использовать фразу (увеличить счётчик)"""
+    result = await session.execute(
+        select(Phrase).where(Phrase.id == phrase_id, Phrase.user_id == current_user.id)
+    )
+    phrase = result.scalar_one_or_none()
+    
+    if not phrase:
+        raise HTTPException(status_code=404, detail="Phrase not found")
+    
+    phrase.usage_count += 1
+    await session.commit()
+    await session.refresh(phrase)
+    
+    card_ids = [int(x) for x in phrase.card_ids.split(",") if x]
+    return PhraseResponse(
+        id=phrase.id,
+        name=phrase.name,
+        card_ids=card_ids,
+        user_id=phrase.user_id,
+        usage_count=phrase.usage_count,
+        created_at=phrase.created_at
+    )
+
+
+@app.post("/phrases/{phrase_id}/speak", response_model=TTSResponse)
+async def speak_phrase(
+    phrase_id: int,
+    language: str = Query("ru", description="Язык озвучки: ru, kk, en"),
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Озвучить всю фразу"""
+    result = await session.execute(
+        select(Phrase).where(Phrase.id == phrase_id, Phrase.user_id == current_user.id)
+    )
+    phrase = result.scalar_one_or_none()
+    
+    if not phrase:
+        raise HTTPException(status_code=404, detail="Phrase not found")
+    
+    # Собираем слова из карточек
+    card_ids = [int(x) for x in phrase.card_ids.split(",") if x]
+    words = []
+    for card_id in card_ids:
+        result = await session.execute(select(Card).where(Card.id == card_id))
+        card = result.scalar_one_or_none()
+        if card:
+            words.append(card.word)
+    
+    # Озвучиваем
+    text = " ".join(words)
+    audio_base64 = await text_to_speech(text, language)
+    
+    return TTSResponse(audio_base64=audio_base64)
+
+
+@app.delete("/phrases/{phrase_id}")
+async def delete_phrase(
+    phrase_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Удалить фразу"""
+    result = await session.execute(
+        select(Phrase).where(Phrase.id == phrase_id, Phrase.user_id == current_user.id)
+    )
+    phrase = result.scalar_one_or_none()
+    
+    if not phrase:
+        raise HTTPException(status_code=404, detail="Phrase not found")
+    
+    await session.delete(phrase)
+    await session.commit()
+    
+    return {"status": "deleted", "id": phrase_id}

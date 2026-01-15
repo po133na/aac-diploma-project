@@ -15,6 +15,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     cards = relationship("Card", back_populates="owner")
+    phrases = relationship("Phrase", back_populates="owner")
 
 
 class Category(Base):
@@ -49,3 +50,16 @@ class Card(Base):
 
     category = relationship("Category", back_populates="cards")
     owner = relationship("User", back_populates="cards")
+
+
+class Phrase(Base):
+    __tablename__ = "phrases"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)  # Название фразы
+    card_ids = Column(String(500), nullable=False)  # ID карточек через запятую: "1,5,12,8"
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    usage_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    owner = relationship("User", back_populates="phrases")
