@@ -5,6 +5,7 @@ from sqlalchemy import select
 from datetime import datetime, timedelta
 from io import BytesIO
 import base64
+import secrets
 
 from huggingface_hub import InferenceClient
 
@@ -14,10 +15,11 @@ from app.schemas import (
     CategoryCreate, CategoryResponse, CategoryListResponse,
     CardCreate, CardUpdate, CardResponse, CardListResponse,
     TTSRequest, TTSResponse,
-    PhraseCreate, PhraseResponse, PhraseListResponse, PhraseWithCardsResponse
+    PhraseCreate, PhraseResponse, PhraseListResponse, PhraseWithCardsResponse,
+    ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest, MessageResponse
 )
 from app.database import init_db, get_session
-from app.models import User, Category, Card, Phrase
+from app.models import User, Category, Card, Phrase, PasswordResetToken
 from app.translation import translate_to_english
 from app.auth import (
     get_password_hash, verify_password, create_access_token, get_current_user
@@ -126,6 +128,85 @@ async def login(user_data: UserLogin, session: AsyncSession = Depends(get_sessio
 async def get_me(current_user: User = Depends(get_current_user)):
     """Получить данные текущего пользователя"""
     return current_user
+
+
+@app.post("/auth/forgot-password", response_model=MessageResponse)
+async def forgot_password(
+    data: ForgotPasswordRequest,
+    session: AsyncSession = Depends(get_session)
+):
+    """Запрос на сброс пароля — генерирует токен"""
+    result = await session.execute(select(User).where(User.email == data.email))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        # Не раскрываем, существует ли email
+        return MessageResponse(message="If email exists, reset token has been generated")
+    
+    # Генерируем токен
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.utcnow() + timedelta(hours=1)
+    
+    reset_token = PasswordResetToken(
+        user_id=user.id,
+        token=token,
+        expires_at=expires_at
+    )
+    session.add(reset_token)
+    await session.commit()
+    
+    # В реальном приложении здесь отправка email
+    # Для разработки возвращаем токен
+    return MessageResponse(message=f"Reset token: {token}")
+
+
+@app.post("/auth/reset-password", response_model=MessageResponse)
+async def reset_password(
+    data: ResetPasswordRequest,
+    session: AsyncSession = Depends(get_session)
+):
+    """Сброс пароля по токену"""
+    result = await session.execute(
+        select(PasswordResetToken).where(
+            PasswordResetToken.token == data.token,
+            PasswordResetToken.used == False,
+            PasswordResetToken.expires_at > datetime.utcnow()
+        )
+    )
+    reset_token = result.scalar_one_or_none()
+    
+    if not reset_token:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+    
+    # Обновляем пароль
+    result = await session.execute(select(User).where(User.id == reset_token.user_id))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.hashed_password = get_password_hash(data.new_password)
+    reset_token.used = True
+    
+    await session.commit()
+    
+    return MessageResponse(message="Password successfully reset")
+
+
+@app.post("/auth/change-password", response_model=MessageResponse)
+async def change_password(
+    data: ChangePasswordRequest,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Смена пароля (для авторизованного пользователя)"""
+    if not verify_password(data.old_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect old password")
+    
+    current_user.hashed_password = get_password_hash(data.new_password)
+    await session.commit()
+    
+    return MessageResponse(message="Password successfully changed")
 
 
 # ==================== КАТЕГОРИИ ====================
