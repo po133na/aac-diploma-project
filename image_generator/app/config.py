@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     HUGGINGFACE_API_TOKEN: str
-    SECRET_KEY: str = "your-secret-key-change-in-production-abc123xyz"
+    SECRET_KEY: str
     DATABASE_URL: str = "sqlite+aiosqlite:///./cards.db"
 
     class Config:

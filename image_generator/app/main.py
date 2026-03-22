@@ -1,25 +1,27 @@
 from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from datetime import datetime, timedelta
+from sqlalchemy import select, func
+from datetime import datetime, timedelta, date
 from io import BytesIO
 import base64
 import secrets
+from PIL import Image
 
 from huggingface_hub import InferenceClient
 
 from app.config import settings
 from app.schemas import (
-    UserCreate, UserLogin, UserResponse, Token,
+    UserCreate, UserLogin, UserResponse, UserUpdate, UserStatsResponse, Token,
+    UserSettingsResponse, UserSettingsUpdate,
     CategoryCreate, CategoryResponse, CategoryListResponse,
-    CardCreate, CardUpdate, CardResponse, CardListResponse,
+    CardCreate, CardUpload, CardGenerateResponse, CardSave, CardUpdate, CardResponse, CardListResponse,
     TTSRequest, TTSResponse,
     PhraseCreate, PhraseResponse, PhraseListResponse, PhraseWithCardsResponse,
     ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest, MessageResponse
 )
 from app.database import init_db, get_session
-from app.models import User, Category, Card, Phrase, PasswordResetToken
+from app.models import User, Category, Card, Phrase, PasswordResetToken, UserSettings, DailyUsage
 from app.translation import translate_to_english
 from app.auth import (
     get_password_hash, verify_password, create_access_token, get_current_user
@@ -54,11 +56,22 @@ async def startup():
         break
 
 
+def _make_card_image(color: tuple) -> str:
+    """Создаёт простое цветное 100x100 PNG и возвращает base64"""
+    img = Image.new("RGB", (100, 100), color=color)
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return base64.b64encode(buf.getvalue()).decode("utf-8")
+
+
 async def create_default_categories(session: AsyncSession):
-    """Создаёт стандартные категории если их нет"""
+    """Создаёт стандартные категории и системные карточки Basics если их нет"""
     result = await session.execute(select(Category).where(Category.user_id == None))
-    if result.first() is None:
+    categories_exist = result.first() is not None
+
+    if not categories_exist:
         default_categories = [
+            {"name": "Основы", "name_kk": "Негіздер", "name_en": "Basics", "icon": "✨"},
             {"name": "Еда", "name_kk": "Тамақ", "name_en": "Food", "icon": "🍎"},
             {"name": "Животные", "name_kk": "Жануарлар", "name_en": "Animals", "icon": "🐱"},
             {"name": "Действия", "name_kk": "Әрекеттер", "name_en": "Actions", "icon": "🏃"},
@@ -68,10 +81,82 @@ async def create_default_categories(session: AsyncSession):
             {"name": "Предметы", "name_kk": "Заттар", "name_en": "Objects", "icon": "📦"},
             {"name": "Цвета", "name_kk": "Түстер", "name_en": "Colors", "icon": "🎨"},
         ]
+        basics_category = None
         for cat_data in default_categories:
             category = Category(**cat_data)
             session.add(category)
+            if cat_data["name_en"] == "Basics":
+                basics_category = category
+
+        await session.flush()  # получаем ID категорий
+
+        # Предзагружаем карточки для Basics (системные, user_id=None)
+        basics_words = [
+            ("I", (173, 216, 230)),
+            ("You", (144, 238, 144)),
+            ("Want", (255, 255, 153)),
+            ("Need", (255, 200, 150)),
+            ("Help", (255, 182, 193)),
+            ("Yes", (144, 238, 144)),
+            ("No", (255, 160, 160)),
+            ("Please", (200, 160, 220)),
+            ("Listen", (160, 220, 220)),
+            ("Eat", (255, 255, 153)),
+            ("Drink", (173, 216, 230)),
+            ("Play", (144, 238, 144)),
+            ("Sleep", (200, 160, 220)),
+            ("Go", (255, 200, 150)),
+            ("Read", (173, 216, 230)),
+            ("Watch", (144, 238, 144)),
+            ("Draw", (255, 182, 193)),
+            ("Sing", (255, 255, 153)),
+            ("Dance", (255, 200, 150)),
+            ("Jump", (160, 220, 220)),
+        ]
+        for word, color in basics_words:
+            card = Card(
+                word=word,
+                language="en",
+                translated_word=word,
+                image_base64=_make_card_image(color),
+                category_id=basics_category.id,
+                user_id=None,
+            )
+            session.add(card)
+
         await session.commit()
+
+    else:
+        # Категории уже есть — проверяем отдельно наличие Basics
+        basics_result = await session.execute(
+            select(Category).where(Category.name_en == "Basics", Category.user_id == None)
+        )
+        if basics_result.scalars().first() is None:
+            basics_category = Category(
+                name="Основы", name_kk="Негіздер", name_en="Basics", icon="✨"
+            )
+            session.add(basics_category)
+            await session.flush()
+
+            basics_words = [
+                ("I", (173, 216, 230)), ("You", (144, 238, 144)),
+                ("Want", (255, 255, 153)), ("Need", (255, 200, 150)),
+                ("Help", (255, 182, 193)), ("Yes", (144, 238, 144)),
+                ("No", (255, 160, 160)), ("Please", (200, 160, 220)),
+                ("Listen", (160, 220, 220)), ("Eat", (255, 255, 153)),
+                ("Drink", (173, 216, 230)), ("Play", (144, 238, 144)),
+                ("Sleep", (200, 160, 220)), ("Go", (255, 200, 150)),
+                ("Read", (173, 216, 230)), ("Watch", (144, 238, 144)),
+                ("Draw", (255, 182, 193)), ("Sing", (255, 255, 153)),
+                ("Dance", (255, 200, 150)), ("Jump", (160, 220, 220)),
+            ]
+            for word, color in basics_words:
+                session.add(Card(
+                    word=word, language="en", translated_word=word,
+                    image_base64=_make_card_image(color),
+                    category_id=basics_category.id, user_id=None,
+                ))
+            await session.commit()
 
 
 @app.get("/")
@@ -128,6 +213,95 @@ async def login(user_data: UserLogin, session: AsyncSession = Depends(get_sessio
 async def get_me(current_user: User = Depends(get_current_user)):
     """Получить данные текущего пользователя"""
     return current_user
+
+
+@app.patch("/auth/me", response_model=UserResponse)
+async def update_me(
+    data: UserUpdate,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Обновить профиль пользователя (имя, email, аватар)"""
+    if data.username is not None:
+        current_user.username = data.username
+
+    if data.email is not None:
+        result = await session.execute(
+            select(User).where(User.email == data.email, User.id != current_user.id)
+        )
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Email already taken")
+        current_user.email = data.email
+
+    if data.avatar_base64 is not None:
+        current_user.avatar_base64 = data.avatar_base64
+
+    await session.commit()
+    await session.refresh(current_user)
+    return current_user
+
+
+@app.get("/user/statistics", response_model=UserStatsResponse)
+async def get_statistics(
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Статистика пользователя"""
+    cards_result = await session.execute(
+        select(Card).where(Card.user_id == current_user.id)
+    )
+    cards = cards_result.scalars().all()
+
+    phrases_result = await session.execute(
+        select(Phrase).where(Phrase.user_id == current_user.id)
+    )
+    phrases = phrases_result.scalars().all()
+
+    total_card_uses = sum(c.usage_count for c in cards)
+    total_phrase_uses = sum(p.usage_count for p in phrases)
+
+    top_cards = sorted(cards, key=lambda c: c.usage_count, reverse=True)[:5]
+    top_phrases = sorted(phrases, key=lambda p: p.usage_count, reverse=True)[:5]
+
+    # Статистика за последние 7 дней
+    today = date.today()
+    week_ago = today - timedelta(days=6)
+    weekly_result = await session.execute(
+        select(func.sum(DailyUsage.cards_used)).where(
+            DailyUsage.user_id == current_user.id,
+            DailyUsage.date >= week_ago
+        )
+    )
+    this_week_cards = weekly_result.scalar() or 0
+
+    # Стрик — количество последовательных дней с использованием
+    daily_result = await session.execute(
+        select(DailyUsage).where(
+            DailyUsage.user_id == current_user.id,
+            DailyUsage.cards_used > 0
+        )
+    )
+    daily_records = daily_result.scalars().all()
+    used_dates = {r.date for r in daily_records}
+
+    streak = 0
+    start = today if today in used_dates else today - timedelta(days=1)
+    check = start
+    while check in used_dates:
+        streak += 1
+        check -= timedelta(days=1)
+
+    return UserStatsResponse(
+        total_cards=len(cards),
+        total_phrases=len(phrases),
+        total_card_uses=total_card_uses,
+        total_phrase_uses=total_phrase_uses,
+        top_cards=[{"id": c.id, "word": c.word, "usage_count": c.usage_count} for c in top_cards],
+        top_phrases=[{"id": p.id, "name": p.name, "usage_count": p.usage_count} for p in top_phrases],
+        member_since=current_user.created_at,
+        this_week_cards=this_week_cards,
+        current_streak=streak,
+    )
 
 
 @app.post("/auth/forgot-password", response_model=MessageResponse)
@@ -209,6 +383,65 @@ async def change_password(
     return MessageResponse(message="Password successfully changed")
 
 
+@app.delete("/auth/me", response_model=MessageResponse)
+async def delete_account(
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Удалить аккаунт пользователя"""
+    await session.delete(current_user)
+    await session.commit()
+    return MessageResponse(message="Account deleted")
+
+
+@app.get("/user/settings", response_model=UserSettingsResponse)
+async def get_settings(
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Получить настройки пользователя"""
+    result = await session.execute(
+        select(UserSettings).where(UserSettings.user_id == current_user.id)
+    )
+    settings_obj = result.scalar_one_or_none()
+    if not settings_obj:
+        # Создаём дефолтные настройки
+        settings_obj = UserSettings(user_id=current_user.id)
+        session.add(settings_obj)
+        await session.commit()
+        await session.refresh(settings_obj)
+    return settings_obj
+
+
+@app.patch("/user/settings", response_model=UserSettingsResponse)
+async def update_settings(
+    data: UserSettingsUpdate,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Обновить настройки пользователя"""
+    result = await session.execute(
+        select(UserSettings).where(UserSettings.user_id == current_user.id)
+    )
+    settings_obj = result.scalar_one_or_none()
+    if not settings_obj:
+        settings_obj = UserSettings(user_id=current_user.id)
+        session.add(settings_obj)
+
+    if data.voice is not None:
+        settings_obj.voice = data.voice
+    if data.language is not None:
+        settings_obj.language = data.language
+    if data.appearance is not None:
+        settings_obj.appearance = data.appearance
+    if data.grid_size is not None:
+        settings_obj.grid_size = data.grid_size
+
+    await session.commit()
+    await session.refresh(settings_obj)
+    return settings_obj
+
+
 # ==================== КАТЕГОРИИ ====================
 
 @app.get("/categories", response_model=CategoryListResponse)
@@ -268,6 +501,57 @@ async def delete_category(
 
 # ==================== КАРТОЧКИ ====================
 
+@app.post("/cards/generate", response_model=CardGenerateResponse)
+async def generate_card(
+    card_data: CardCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Сгенерировать изображение без сохранения — юзер сам решает сохранить или нет"""
+    try:
+        translated = await translate_to_english(card_data.word, card_data.language)
+
+        prompt = f"simple illustration of {translated}, clear icon style, white background, child-friendly"
+        image = hf_client.text_to_image(
+            prompt=prompt,
+            model="black-forest-labs/FLUX.1-schnell",
+        )
+
+        buffer = BytesIO()
+        image.save(buffer, format="PNG")
+        image_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+        return CardGenerateResponse(
+            word=card_data.word,
+            language=card_data.language,
+            translated_word=translated,
+            image_base64=image_base64
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/cards/save", response_model=CardResponse)
+async def save_card(
+    card_data: CardSave,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Сохранить карточку после того как юзер одобрил сгенерированное изображение"""
+    card = Card(
+        word=card_data.word,
+        language=card_data.language,
+        translated_word=card_data.translated_word,
+        image_base64=card_data.image_base64,
+        category_id=card_data.category_id,
+        user_id=current_user.id
+    )
+    session.add(card)
+    await session.commit()
+    await session.refresh(card)
+    return card
+
+
 @app.post("/cards", response_model=CardResponse)
 async def create_card(
     card_data: CardCreate,
@@ -311,6 +595,34 @@ async def create_card(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/cards/upload", response_model=CardResponse)
+async def upload_card(
+    card_data: CardUpload,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Создать карточку с загруженным фото (с камеры или галереи)"""
+    try:
+        translated = await translate_to_english(card_data.word, card_data.language)
+
+        card = Card(
+            word=card_data.word,
+            language=card_data.language,
+            translated_word=translated,
+            image_base64=card_data.image_base64,
+            category_id=card_data.category_id,
+            user_id=current_user.id
+        )
+        session.add(card)
+        await session.commit()
+        await session.refresh(card)
+
+        return card
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/cards", response_model=CardListResponse)
 async def get_cards(
     category_id: int = Query(None, description="Фильтр по категории"),
@@ -319,8 +631,10 @@ async def get_cards(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    """Получить карточки пользователя с фильтрами"""
-    query = select(Card).where(Card.user_id == current_user.id)
+    """Получить карточки пользователя с фильтрами (включая системные)"""
+    query = select(Card).where(
+        (Card.user_id == current_user.id) | (Card.user_id == None)
+    )
     
     if category_id:
         query = query.where(Card.category_id == category_id)
@@ -347,13 +661,16 @@ async def get_card(
 ):
     """Получить карточку по ID"""
     result = await session.execute(
-        select(Card).where(Card.id == card_id, Card.user_id == current_user.id)
+        select(Card).where(
+            Card.id == card_id,
+            (Card.user_id == current_user.id) | (Card.user_id == None)
+        )
     )
     card = result.scalar_one_or_none()
-    
+
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
-    
+
     return card
 
 
@@ -391,19 +708,39 @@ async def use_card(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    """Увеличить счётчик использования карточки"""
+    """Увеличить счётчик использования карточки и записать в DailyUsage"""
     result = await session.execute(
-        select(Card).where(Card.id == card_id, Card.user_id == current_user.id)
+        select(Card).where(
+            Card.id == card_id,
+            (Card.user_id == current_user.id) | (Card.user_id == None)
+        )
     )
     card = result.scalar_one_or_none()
-    
+
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
-    
-    card.usage_count += 1
+
+    # Увеличиваем счётчик только для пользовательских карточек
+    if card.user_id is not None:
+        card.usage_count += 1
+
+    # Трекаем ежедневное использование
+    today = date.today()
+    daily_result = await session.execute(
+        select(DailyUsage).where(
+            DailyUsage.user_id == current_user.id,
+            DailyUsage.date == today
+        )
+    )
+    daily = daily_result.scalar_one_or_none()
+    if daily:
+        daily.cards_used += 1
+    else:
+        session.add(DailyUsage(user_id=current_user.id, date=today, cards_used=1))
+
     await session.commit()
     await session.refresh(card)
-    
+
     return card
 
 

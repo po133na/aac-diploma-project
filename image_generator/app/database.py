@@ -1,10 +1,10 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
 from app.models import Base
+from app.config import settings
 
-DATABASE_URL = "sqlite+aiosqlite:///./cards.db"
-
-engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(settings.DATABASE_URL, echo=False)
 
 async_session = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
@@ -13,7 +13,11 @@ async_session = sessionmaker(
 
 async def init_db():
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        for table in Base.metadata.sorted_tables:
+            try:
+                await conn.run_sync(lambda c, t=table: t.create(c, checkfirst=True))
+            except Exception:
+                pass  # таблица или sequence уже существуют
 
 
 async def get_session() -> AsyncSession:

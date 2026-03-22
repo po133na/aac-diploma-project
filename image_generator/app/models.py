@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, Date
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 
@@ -12,10 +12,12 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     username = Column(String(100), nullable=False)
     hashed_password = Column(String(255), nullable=False)
+    avatar_base64 = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     cards = relationship("Card", back_populates="owner")
     phrases = relationship("Phrase", back_populates="owner")
+    settings = relationship("UserSettings", back_populates="owner", uselist=False)
 
 
 class Category(Base):
@@ -44,8 +46,8 @@ class Card(Base):
     usage_count = Column(Integer, default=0)  # Счётчик использований
     
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # None = системная карточка
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
     category = relationship("Category", back_populates="cards")
@@ -56,13 +58,37 @@ class Phrase(Base):
     __tablename__ = "phrases"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False)  # Название фразы
-    card_ids = Column(String(500), nullable=False)  # ID карточек через запятую: "1,5,12,8"
+    name = Column(String(255), nullable=False) 
+    card_ids = Column(String(500), nullable=False)  
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     usage_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     owner = relationship("User", back_populates="phrases")
+
+
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    voice = Column(String(20), default="female")        # male, female, child
+    language = Column(String(10), default="ru")         # ru, kk, en
+    appearance = Column(String(10), default="auto")     # light, dark, auto
+    grid_size = Column(String(10), default="standard")  # standard, large
+
+    owner = relationship("User", back_populates="settings")
+
+
+class DailyUsage(Base):
+    __tablename__ = "daily_usage"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    date = Column(Date, nullable=False)
+    cards_used = Column(Integer, default=0)
+
+    owner = relationship("User")
 
 
 class PasswordResetToken(Base):

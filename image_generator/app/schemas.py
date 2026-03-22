@@ -19,10 +19,46 @@ class UserResponse(BaseModel):
     id: int
     email: str
     username: str
+    avatar_base64: Optional[str] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    email: Optional[EmailStr] = None
+    avatar_base64: Optional[str] = None
+
+
+class UserStatsResponse(BaseModel):
+    total_cards: int
+    total_phrases: int
+    total_card_uses: int
+    total_phrase_uses: int
+    top_cards: list[dict]
+    top_phrases: list[dict]
+    member_since: datetime
+    this_week_cards: int
+    current_streak: int
+
+
+class UserSettingsResponse(BaseModel):
+    voice: str
+    language: str
+    appearance: str
+    grid_size: str
+
+    class Config:
+        from_attributes = True
+
+
+class UserSettingsUpdate(BaseModel):
+    voice: Optional[Literal["male", "female", "child"]] = None
+    language: Optional[Literal["ru", "kk", "en"]] = None
+    appearance: Optional[Literal["light", "dark", "auto"]] = None
+    grid_size: Optional[Literal["standard", "large"]] = None
 
 
 class Token(BaseModel):
@@ -79,6 +115,28 @@ class CategoryListResponse(BaseModel):
 class CardCreate(BaseModel):
     word: str
     language: Literal["ru", "kk"] = "ru"
+    category_id: Optional[int] = None
+
+
+class CardUpload(BaseModel):
+    word: str
+    language: Literal["ru", "kk"] = "ru"
+    category_id: Optional[int] = None
+    image_base64: str  # base64 фото с камеры/галереи
+
+
+class CardGenerateResponse(BaseModel):
+    word: str
+    language: str
+    translated_word: str
+    image_base64: str  # временная, ещё не сохранена
+
+
+class CardSave(BaseModel):
+    word: str
+    language: Literal["ru", "kk"] = "ru"
+    translated_word: str
+    image_base64: str
     category_id: Optional[int] = None
 
 
