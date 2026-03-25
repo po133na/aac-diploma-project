@@ -18,6 +18,7 @@ struct MainTabView: View {
             Group {
                 switch selectedTab {
                 case .home:     HomeView()
+                case .gallery:  GalleryView()
                 case .settings: ProfileView()
                 }
             }
@@ -43,6 +44,7 @@ struct CustomTabBar: View {
 
     var body: some View {
         HStack(spacing: 0) {
+            // Home tab
             TabBarItem(
                 icon: "house.fill",
                 label: "Home",
@@ -50,9 +52,21 @@ struct CustomTabBar: View {
             ) {
                 selectedTab = .home
             }
-
+            
+            Spacer()
+            
+            // Gallery tab
+            TabBarItem(
+                icon: "photo.on.rectangle",
+                label: "Gallery",
+                isSelected: selectedTab == .gallery
+            ) {
+                selectedTab = .gallery
+            }
+            
             Spacer()
 
+            // Plus button
             Button(action: onPlusTap) {
                 ZStack {
                     Circle()
@@ -74,7 +88,7 @@ struct CustomTabBar: View {
             .offset(y: -16)
 
             Spacer()
-
+            
             // Settings tab
             TabBarItem(
                 icon: "gearshape.fill",
@@ -145,7 +159,7 @@ struct CreateCardSheet: View {
 
 // MARK: - Tab Routes
 enum TabRoute: Hashable {
-    case home, settings
+    case home, gallery, settings
 }
 
 #Preview {

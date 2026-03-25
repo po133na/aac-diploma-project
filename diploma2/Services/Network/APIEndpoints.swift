@@ -18,17 +18,18 @@ enum APIEndpoint {
     // Cards
     case getCards
     case getSavedCards
-    case saveCard(cardId: String)
-    case deleteCard(cardId: String)
+    case saveCard(card: CardCreate)           // POST /cards
+    case deleteCard(cardId: String)           // DELETE /cards/{id}
+    case toggleFavorite(cardId: String)       // PATCH /cards/{id}
     
-    // Folders
-    case getFolders
-    case createFolder(name: String, emoji: String?)
-    case deleteFolder(folderId: String)
+    // Categories (бывшие Folders)
+    case getCategories
+    case createCategory(name: String, nameKk: String?, nameEn: String?, icon: String?)
+    case deleteCategory(categoryId: String)
     
     // AI Features
-    case generateImage(prompt: String)
-    case textToSpeech(text: String, language: String)
+    case generateImage(word: String, language: String, categoryId: Int?)  // POST /cards/generate
+    case textToSpeech(text: String, language: String)                     // POST /tts
     
     var path: String {
         switch self {
@@ -38,23 +39,24 @@ enum APIEndpoint {
         case .getProfile:         return "/user/profile"
         case .updateProfile:      return "/user/profile"
         case .getCards:           return "/cards"
-        case .getSavedCards:      return "/cards/saved"
-        case .saveCard(let id):   return "/cards/\(id)/save"
+        case .getSavedCards:      return "/cards/saved"  // возможно, не используется
+        case .saveCard:           return "/cards"
         case .deleteCard(let id): return "/cards/\(id)"
-        case .getFolders:         return "/folders"
-        case .createFolder:       return "/folders"
-        case .deleteFolder(let id): return "/folders/\(id)"
-        case .generateImage:      return "/ai/image"
-        case .textToSpeech:       return "/ai/tts"
+        case .toggleFavorite(let id): return "/cards/\(id)"
+        case .getCategories:      return "/categories"
+        case .createCategory:     return "/categories"
+        case .deleteCategory(let id): return "/categories/\(id)"
+        case .generateImage:      return "/cards/generate"
+        case .textToSpeech:       return "/tts"
         }
     }
     
     var method: String {
         switch self {
-        case .getProfile, .getCards, .getSavedCards, .getFolders: return "GET"
-        case .deleteCard, .deleteFolder:                           return "DELETE"
-        case .saveCard, .updateProfile:                           return "PATCH"
-        default:                                                   return "POST"
+        case .getProfile, .getCards, .getSavedCards, .getCategories: return "GET"
+        case .deleteCard, .deleteCategory:                           return "DELETE"
+        case .toggleFavorite:                                        return "PATCH"
+        default:                                                     return "POST"
         }
     }
     
@@ -64,12 +66,28 @@ enum APIEndpoint {
             return ["email": email, "password": password]
         case .register(let name, let email, let password):
             return ["name": name, "email": email, "password": password]
-        case .generateImage(let prompt):
-            return ["prompt": prompt]
+        case .generateImage(let word, let language, let categoryId):
+            var dict: [String: Any] = ["word": word, "language": language]
+            if let categoryId = categoryId {
+                dict["category_id"] = categoryId
+            }
+            return dict
         case .textToSpeech(let text, let language):
             return ["text": text, "language": language]
-        case .createFolder(let name, let emoji):
-            return ["name": name, "emoji": emoji ?? ""]
+        case .saveCard(let card):
+            var dict: [String: Any] = ["word": card.word, "language": card.language]
+            if let categoryId = card.categoryId {
+                dict["category_id"] = categoryId
+            }
+            return dict
+        case .createCategory(let name, let nameKk, let nameEn, let icon):
+            var dict: [String: Any] = ["name": name]
+            if let nameKk = nameKk { dict["name_kk"] = nameKk }
+            if let nameEn = nameEn { dict["name_en"] = nameEn }
+            if let icon = icon { dict["icon"] = icon }
+            return dict
+        case .toggleFavorite:
+            return ["is_favorite": true]  // бэкенд ожидает CardUpdate
         default:
             return nil
         }

@@ -7,6 +7,7 @@
 
 
 import SwiftUI
+import UIKit
 
 // MARK: - Card Manager Main Screen
 
@@ -217,9 +218,10 @@ private struct MiniCardView: View {
 enum CreateCardStep: Int, CaseIterable {
     case imageSource = 1
     case describeImage = 2
-    case nameCard = 3
-    case saveCard = 4  // step 5 в дизайне
-    case success = 5
+    case previewImage = 3
+    case nameCard = 4
+    case saveCard = 5  // step 6 в дизайне
+    case success = 6
 }
 
 struct CreateCardFlow: View {
@@ -229,10 +231,33 @@ struct CreateCardFlow: View {
     @State private var imagePrompt = ""
     @State private var cardName = ""
     @State private var selectedCategory = ""
+    @State private var generatedImageBase64: String? = nil
+    @State private var isLoading = false
+    @State private var errorMessage: String? = nil
 
-    // Прогресс: 4 реальных шага (success не считается)
+    // Прогресс: 5 реальных шага (success не считается)
     private var progress: Double {
-        Double(step.rawValue) / 4.0
+        Double(step.rawValue) / 5.0
+    }
+
+    private func generateImage() async -> Bool {
+        guard !imagePrompt.isEmpty else { return false }
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        
+        do {
+            let response = try await ImageGenService.shared.generateImage(
+                word: imagePrompt,
+                language: "ru", // TODO: взять из настроек пользователя
+                categoryId: nil
+            )
+            generatedImageBase64 = response.image_base64
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
     }
 
     var body: some View {
@@ -258,9 +283,19 @@ struct CreateCardFlow: View {
                         step = .describeImage
                     }
                 case .describeImage:
-                    CardDescribeStep(prompt: $imagePrompt) {
+                    CardDescribeStep(
+                        prompt: $imagePrompt,
+                        isLoading: $isLoading,
+                        errorMessage: $errorMessage,
+                        generateAction: generateImage,
+                        onSuccess: { step = .previewImage }
+                    )
+                case .previewImage:
+                    CardPreviewStep(imageBase64: generatedImageBase64, onSave: {
                         step = .nameCard
-                    }
+                    }, onRegenerate: {
+                        step = .describeImage
+                    })
                 case .nameCard:
                     CardNameStep(name: $cardName) {
                         step = .saveCard
@@ -291,7 +326,8 @@ struct CreateCardFlow: View {
         switch step {
         case .imageSource:  return "STEP 1: GENERATE WITH AI"
         case .describeImage: return "STEP 2: CHOOSE IMAGE SOURCE"
-        case .nameCard:     return "STEP 3: NAME YOUR CARD"
+        case .previewImage:  return "STEP 3: PREVIEW IMAGE"
+        case .nameCard:     return "STEP 4: NAME YOUR CARD"
         case .saveCard:     return "STEP 5: SAVE YOUR CARD"
         case .success:      return ""
         }
@@ -301,7 +337,8 @@ struct CreateCardFlow: View {
         switch step {
         case .imageSource:   dismiss()
         case .describeImage: step = .imageSource
-        case .nameCard:      step = .describeImage
+        case .previewImage:  step = .describeImage
+        case .nameCard:      step = .previewImage
         case .saveCard:      step = .nameCard
         case .success:       break
         }
@@ -422,7 +459,10 @@ private struct ImageSourceRow: View {
 
 private struct CardDescribeStep: View {
     @Binding var prompt: String
-    let onGenerate: () -> Void
+    @Binding var isLoading: Bool
+    @Binding var errorMessage: String?
+    let generateAction: () async -> Bool
+    let onSuccess: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -480,13 +520,35 @@ private struct CardDescribeStep: View {
                 .padding(.bottom, 20)
             }
 
+            // Сообщение об ошибке
+            if let errorMessage = errorMessage {
+                Text(errorMessage)
+                    .font(.system(size: 14))
+                    .foregroundColor(Color.red)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 8)
+            }
+
             // Кнопка Generate
             VStack {
-                Button(action: onGenerate) {
+                Button(action: {
+                    Task {
+                        let success = await generateAction()
+                        if success {
+                            onSuccess()
+                        }
+                    }
+                }) {
                     HStack(spacing: 8) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .bold))
-                        Text("Generate Image")
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(0.8)
+                        } else {
+                            Image(systemName: "plus")
+                                .font(.system(size: 14, weight: .bold))
+                        }
+                        Text(isLoading ? "Generating..." : "Generate Image")
                             .font(.system(size: 17, weight: .semibold))
                     }
                     .foregroundColor(.white)
@@ -497,8 +559,8 @@ private struct CardDescribeStep: View {
                             .fill(Color(hex: "5BAECC"))
                     )
                 }
-                .disabled(prompt.trimmingCharacters(in: .whitespaces).isEmpty)
-                .opacity(prompt.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
+                .disabled(prompt.trimmingCharacters(in: .whitespaces).isEmpty || isLoading)
+                .opacity((prompt.trimmingCharacters(in: .whitespaces).isEmpty || isLoading) ? 0.5 : 1)
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 32)
@@ -506,7 +568,100 @@ private struct CardDescribeStep: View {
     }
 }
 
-// MARK: - Step 3: Name Card
+// MARK: - Step 3: Preview Image
+
+private struct CardPreviewStep: View {
+    let imageBase64: String?
+    let onSave: () -> Void
+    let onRegenerate: () -> Void
+    
+    private var uiImage: UIImage? {
+        guard let base64 = imageBase64,
+              let data = Data(base64Encoded: base64) else { return nil }
+        return UIImage(data: data)
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    // Иконка
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(Color(hex: "D4C5F5"))
+                            .frame(width: 72, height: 72)
+                        Image(systemName: "photo.fill")
+                            .font(.system(size: 30))
+                            .foregroundColor(Color(hex: "7C5CBF"))
+                    }
+                    .padding(.top, 32)
+                    
+                    VStack(spacing: 8) {
+                        Text("Превью изображения")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(Color(hex: "1C3F6E"))
+                        Text("Нравится сгенерированное изображение?")
+                            .font(.system(size: 14))
+                            .foregroundColor(Color(hex: "6B8BAE"))
+                    }
+                    
+                    // Превью изображения
+                    if let uiImage = uiImage {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 200, height: 200)
+                            .cornerRadius(20)
+                    } else {
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(Color(hex: "C5D8F5"))
+                            .frame(width: 200, height: 200)
+                            .overlay(
+                                Text("No image")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            )
+                    }
+                    
+                    // Кнопки
+                    VStack(spacing: 12) {
+                        Button(action: onSave) {
+                            Text("Сохранить и продолжить")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 18)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 18)
+                                        .fill(Color(hex: "6DBF82"))
+                                )
+                        }
+                        
+                        Button(action: onRegenerate) {
+                            Text("Сгенерировать заново")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(Color(hex: "F87171"))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 18)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 18)
+                                        .fill(Color.white)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 18)
+                                                .stroke(Color(hex: "F87171"), lineWidth: 2)
+                                        )
+                                )
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
+            }
+        }
+    }
+}
+
+// MARK: - Step 4: Name Card
 
 private struct CardNameStep: View {
     @Binding var name: String
