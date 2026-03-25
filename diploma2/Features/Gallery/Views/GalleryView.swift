@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import UIKit
 
 struct GalleryView: View {
     @StateObject private var viewModel = GalleryViewModel()
