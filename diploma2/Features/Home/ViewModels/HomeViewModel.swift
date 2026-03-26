@@ -57,6 +57,10 @@ final class HomeViewModel: ObservableObject {
             categories = []
         }
     }
+    
+    func refreshCategories() async {
+        await loadCategories()
+    }
 
     func loadRecentCards() async {
         do {

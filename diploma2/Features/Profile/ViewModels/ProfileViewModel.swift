@@ -15,10 +15,16 @@ final class ProfileViewModel: ObservableObject {
         didSet { UserDefaults.standard.set(autoSpeak, forKey: "auto_speak") }
     }
     @Published var largeText: Bool {
-        didSet { UserDefaults.standard.set(largeText, forKey: "large_text") }
+        didSet {
+            UserDefaults.standard.set(largeText, forKey: "large_text")
+            ThemeManager.shared.isLargeText = largeText
+        }
     }
     @Published var highContrast: Bool {
-        didSet { UserDefaults.standard.set(highContrast, forKey: "high_contrast") }
+        didSet {
+            UserDefaults.standard.set(highContrast, forKey: "high_contrast")
+            ThemeManager.shared.isHighContrast = highContrast
+        }
     }
 
     private let statsService = StatsService()
@@ -29,6 +35,10 @@ final class ProfileViewModel: ObservableObject {
         autoSpeak    = UserDefaults.standard.bool(forKey: "auto_speak")
         largeText    = UserDefaults.standard.bool(forKey: "large_text")
         highContrast = UserDefaults.standard.bool(forKey: "high_contrast")
+        
+        // Синхронизируем с ThemeManager
+        ThemeManager.shared.isLargeText = largeText
+        ThemeManager.shared.isHighContrast = highContrast
     }
 
     func loadStats() async {

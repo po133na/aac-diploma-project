@@ -126,9 +126,10 @@ struct CardCreate: Codable {
     let word: String
     let language: String      // "ru" | "kk"
     let categoryId: Int?
+    let style: String?        // "cartoon", "realistic", "watercolor", "simple"
 
     enum CodingKeys: String, CodingKey {
-        case word, language
+        case word, language, style
         case categoryId = "category_id"
     }
 }
@@ -203,19 +204,53 @@ struct TTSResponse: Codable {
     }
 }
 
-// MARK: - Stats (бэкендер добавит /user/stats)
+// MARK: - Stats
 
 struct UserStats: Codable {
-    let cardsThisWeek: Int
     let totalCards: Int
+    let totalPhrases: Int
+    let totalCardUses: Int
+    let totalPhraseUses: Int
+    let topCards: [TopCard]
+    let topPhrases: [TopPhrase]
+    let memberSince: Date
+    let thisWeekCards: Int
     let currentStreak: Int
-    let weeklyData: [Double]   // 7 значений для бар-чарта
+    let weeklyData: [Double]?   // 7 значений для бар-чарта (опционально)
 
     enum CodingKeys: String, CodingKey {
-        case cardsThisWeek = "cards_this_week"
-        case totalCards    = "total_cards"
+        case totalCards = "total_cards"
+        case totalPhrases = "total_phrases"
+        case totalCardUses = "total_card_uses"
+        case totalPhraseUses = "total_phrase_uses"
+        case topCards = "top_cards"
+        case topPhrases = "top_phrases"
+        case memberSince = "member_since"
+        case thisWeekCards = "this_week_cards"
         case currentStreak = "current_streak"
-        case weeklyData    = "weekly_data"
+        case weeklyData = "weekly_data"
+    }
+}
+
+struct TopCard: Codable {
+    let id: Int
+    let word: String
+    let usageCount: Int
+    
+    enum CodingKeys: String, CodingKey {
+        case id, word
+        case usageCount = "usage_count"
+    }
+}
+
+struct TopPhrase: Codable {
+    let id: Int
+    let name: String
+    let usageCount: Int
+    
+    enum CodingKeys: String, CodingKey {
+        case id, name
+        case usageCount = "usage_count"
     }
 }
 

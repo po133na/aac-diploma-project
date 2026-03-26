@@ -31,8 +31,8 @@ final class CardService {
     }
 
     // Создать карточку (AI генерация)
-    func createCard(word: String, language: String, categoryId: Int? = nil) async throws -> Card {
-        let body = CardCreate(word: word, language: language, categoryId: categoryId)
+    func createCard(word: String, language: String, categoryId: Int? = nil, style: String = "cartoon") async throws -> Card {
+        let body = CardCreate(word: word, language: language, categoryId: categoryId, style: style)
         return try await client.request(path: "/cards", method: "POST", body: body)
     }
 
@@ -144,6 +144,11 @@ final class TTSService: ObservableObject {
 
     // Основной метод — пробует API, fallback на AVFoundation
     func speak(text: String, language: AppLanguage) async {
+        // Проверяем, включен ли TTS
+        guard UserDefaults.standard.object(forKey: "tts_enabled") as? Bool ?? true else {
+            return
+        }
+        
         guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         isSpeaking = true
         defer { isSpeaking = false }
@@ -215,21 +220,12 @@ private struct TTSRequestBody: Encodable {
     let language: String
 }
 
-// MARK: - StatsService (когда бэкендер добавит /user/stats)
+// MARK: - StatsService
 
 final class StatsService {
     private let client = APIClient.shared
 
     func getStats() async throws -> UserStats {
-        // TODO: раскомментировать когда бэкендер добавит endpoint
-        // return try await client.request(path: "/user/stats")
-
-        // Пока возвращаем мок
-        return UserStats(
-            cardsThisWeek: 0,
-            totalCards: 0,
-            currentStreak: 0,
-            weeklyData: [0.3, 0.5, 0.4, 0.7, 0.6, 0.85, 1.0]
-        )
+        return try await client.request(path: "/user/statistics")
     }
 }

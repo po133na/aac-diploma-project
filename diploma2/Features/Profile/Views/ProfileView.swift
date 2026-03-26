@@ -29,7 +29,7 @@ struct ProfileView: View {
                             .padding(.horizontal, 20)
                             .padding(.bottom, 10)
                         
-                        ActivityCard()
+                        ActivityCard(viewModel: viewModel)
                             .padding(.horizontal, 16)
                             .padding(.bottom, 24)
                         
@@ -38,7 +38,7 @@ struct ProfileView: View {
                             .padding(.horizontal, 20)
                             .padding(.bottom, 10)
                         
-                        SettingsAccordionCard(expandedSection: $expandedSection)
+                        SettingsAccordionCard(expandedSection: $expandedSection, viewModel: viewModel)
                             .padding(.horizontal, 16)
                             .padding(.bottom, 12)
                         
@@ -173,10 +173,28 @@ private struct SectionHeader: View {
 // MARK: - Activity Card
 
 private struct ActivityCard: View {
-    // Мок данные — подключить к реальному API
-    let cardsUsed = 142
-    let streak = 7
-    let barData: [CGFloat] = [0.3, 0.5, 0.4, 0.7, 0.6, 0.85, 1.0]
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @ObservedObject var viewModel: ProfileViewModel
+    
+    private var cardsUsed: Int {
+        viewModel.stats?.thisWeekCards ?? 0
+    }
+    
+    private var streak: Int {
+        viewModel.stats?.currentStreak ?? 0
+    }
+    
+    private var barData: [CGFloat] {
+        guard let weeklyData = viewModel.stats?.weeklyData, !weeklyData.isEmpty else {
+            return [0.3, 0.5, 0.4, 0.7, 0.6, 0.85, 1.0] // fallback
+        }
+        let maxValue = weeklyData.max() ?? 1.0
+        return weeklyData.map { CGFloat($0 / max(maxValue, 1.0)) }
+    }
+    
+    private var totalCards: Int {
+        viewModel.stats?.totalCards ?? 0
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -211,20 +229,31 @@ private struct ActivityCard: View {
                 .frame(height: 40)
             }
 
-            // Streak
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(Color(hex: "F5A623"))
-                    .frame(width: 8, height: 8)
-                Text("\(streak)-day streak")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(Color(hex: "6B8BAE"))
+            // Streak и Total Cards
+            HStack(spacing: 16) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color(hex: "F5A623"))
+                        .frame(width: 8, height: 8)
+                    Text("\(streak)-day streak")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(Color(hex: "6B8BAE"))
+                }
+                
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color(hex: "A78BFA"))
+                        .frame(width: 8, height: 8)
+                    Text("\(totalCards) total cards")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(Color(hex: "6B8BAE"))
+                }
             }
 
             Divider()
                 .background(Color(hex: "E5EEF5"))
 
-            NavigationLink(destination: FullStatsView()) {
+            NavigationLink(destination: FullStatsView(stats: viewModel.stats)) {
                 Text("See full stats ›")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(Color(hex: "5BAECC"))
@@ -275,6 +304,7 @@ enum SettingsSection: Identifiable, CaseIterable {
 
 private struct SettingsAccordionCard: View {
     @Binding var expandedSection: SettingsSection?
+    @ObservedObject var viewModel: ProfileViewModel
 
     var body: some View {
         VStack(spacing: 0) {
@@ -286,12 +316,14 @@ private struct SettingsAccordionCard: View {
 
                     AccordionRow(
                         section: section,
-                        isExpanded: expandedSection == section
-                    ) {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            expandedSection = (expandedSection == section) ? nil : section
-                        }
-                    }
+                        isExpanded: expandedSection == section,
+                        onTap: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                expandedSection = (expandedSection == section) ? nil : section
+                            }
+                        },
+                        viewModel: viewModel
+                    )
                 }
             }
         }
@@ -307,6 +339,7 @@ private struct AccordionRow: View {
     let section: SettingsSection
     let isExpanded: Bool
     let onTap: () -> Void
+    @ObservedObject var viewModel: ProfileViewModel
 
     var body: some View {
         VStack(spacing: 0) {
@@ -341,7 +374,7 @@ private struct AccordionRow: View {
 
             // Раскрытый контент
             if isExpanded {
-                AccordionContent(section: section)
+                AccordionContent(section: section, viewModel: viewModel)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
@@ -350,6 +383,7 @@ private struct AccordionRow: View {
 
 private struct AccordionContent: View {
     let section: SettingsSection
+    @ObservedObject var viewModel: ProfileViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -357,9 +391,9 @@ private struct AccordionContent: View {
 
             switch section {
             case .communication:
-                CommunicationSettings()
+                CommunicationSettings(viewModel: viewModel)
             case .accessibility:
-                AccessibilitySettings()
+                AccessibilitySettings(viewModel: viewModel)
             case .support:
                 SupportSettings()
             }
@@ -370,28 +404,26 @@ private struct AccordionContent: View {
 // MARK: - Accordion Content Views
 
 private struct CommunicationSettings: View {
-    @State private var ttsEnabled = true
-    @State private var autoSpeak = false
+    @ObservedObject var viewModel: ProfileViewModel
 
     var body: some View {
         VStack(spacing: 0) {
-            ToggleRow(label: "Text-to-Speech", isOn: $ttsEnabled)
+            ToggleRow(label: "Text-to-Speech", isOn: $viewModel.ttsEnabled)
             Divider().padding(.leading, 16)
-            ToggleRow(label: "Auto speak on selection", isOn: $autoSpeak)
+            ToggleRow(label: "Auto speak on selection", isOn: $viewModel.autoSpeak)
         }
         .padding(.bottom, 4)
     }
 }
 
 private struct AccessibilitySettings: View {
-    @State private var largeText = false
-    @State private var highContrast = false
+    @ObservedObject var viewModel: ProfileViewModel
 
     var body: some View {
         VStack(spacing: 0) {
-            ToggleRow(label: "Large text", isOn: $largeText)
+            ToggleRow(label: "Large text", isOn: $viewModel.largeText)
             Divider().padding(.leading, 16)
-            ToggleRow(label: "High contrast", isOn: $highContrast)
+            ToggleRow(label: "High contrast", isOn: $viewModel.highContrast)
         }
         .padding(.bottom, 4)
     }
@@ -507,15 +539,145 @@ struct EditProfileSheet: View {
 // MARK: - Full Stats Screen
 struct FullStatsView: View {
     @Environment(\.dismiss) var dismiss
-
+    let stats: UserStats?
+    
     var body: some View {
         ZStack {
             Color(hex: "D6EEF5").ignoresSafeArea()
-            Text("Full Stats — coming soon")
-                .foregroundColor(Color(hex: "6B8BAE"))
+            
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    // Карточка общей статистики
+                    StatsCard(
+                        title: "Overview",
+                        items: [
+                            ("Total Cards", "\(stats?.totalCards ?? 0)"),
+                            ("Cards This Week", "\(stats?.thisWeekCards ?? 0)"),
+                            ("Current Streak", "\(stats?.currentStreak ?? 0) days"),
+                            ("Total Card Uses", "\(stats?.totalCardUses ?? 0)"),
+                            ("Total Phrases", "\(stats?.totalPhrases ?? 0)"),
+                            ("Total Phrase Uses", "\(stats?.totalPhraseUses ?? 0)")
+                        ]
+                    )
+                    
+                    // Top Cards
+                    if let topCards = stats?.topCards, !topCards.isEmpty {
+                        StatsCard(
+                            title: "Most Used Cards",
+                            items: topCards.prefix(5).map { card in
+                                ("\(card.word)", "\(card.usageCount) uses")
+                            }
+                        )
+                    }
+                    
+                    // Top Phrases
+                    if let topPhrases = stats?.topPhrases, !topPhrases.isEmpty {
+                        StatsCard(
+                            title: "Most Used Phrases",
+                            items: topPhrases.prefix(5).map { phrase in
+                                ("\(phrase.name)", "\(phrase.usageCount) uses")
+                            }
+                        )
+                    }
+                    
+                    // Weekly Chart
+                    if let weeklyData = stats?.weeklyData, !weeklyData.isEmpty {
+                        WeeklyChartView(data: weeklyData)
+                            .padding(.horizontal, 16)
+                    }
+                }
+                .padding(.vertical, 20)
+            }
         }
         .navigationTitle("Statistics")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct StatsCard: View {
+    let title: String
+    let items: [(String, String)]
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(Color(hex: "1C3F6E"))
+                .padding(.horizontal, 20)
+            
+            VStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+                    HStack {
+                        Text(item.0)
+                            .font(.system(size: 14))
+                            .foregroundColor(Color(hex: "1C3F6E"))
+                        
+                        Spacer()
+                        
+                        Text(item.1)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(Color(hex: "5BAECC"))
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    
+                    if index < items.count - 1 {
+                        Divider().padding(.leading, 16)
+                    }
+                }
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(Color.white)
+                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+            )
+            .padding(.horizontal, 16)
+        }
+    }
+}
+
+struct WeeklyChartView: View {
+    let data: [Double]
+    
+    private var maxValue: Double {
+        data.max() ?? 1.0
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Weekly Activity")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(Color(hex: "1C3F6E"))
+            
+            HStack(alignment: .bottom, spacing: 8) {
+                ForEach(data.indices, id: \.self) { index in
+                    VStack(spacing: 6) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(index == data.count - 1
+                                  ? Color(hex: "5BAECC")
+                                  : Color(hex: "C5D8E8"))
+                            .frame(width: 20, height: CGFloat(100 * data[index] / max(maxValue, 1.0)))
+                        
+                        Text(dayLabel(for: index))
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "6B8BAE"))
+                    }
+                }
+            }
+            .frame(height: 120)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(Color.white)
+                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+            )
+        }
+    }
+    
+    private func dayLabel(for index: Int) -> String {
+        let days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        return index < days.count ? days[index] : "Day \(index + 1)"
     }
 }
 

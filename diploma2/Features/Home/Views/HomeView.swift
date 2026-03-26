@@ -212,6 +212,42 @@ struct HomeContentView: View {
                     }
                     .padding(.horizontal, 16)
                 }
+                
+                // Recent Cards (сгенерированные карточки)
+                if !viewModel.recentCards.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Recent Cards")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(Color(hex: "1C3F6E"))
+                            Spacer()
+                            NavigationLink(destination: CardManagerView()) {
+                                Text("View All >")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(Color(hex: "F87171"))
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 20)
+                        
+                        // Грид карточек
+                        let columns = [
+                            GridItem(.flexible(), spacing: 10),
+                            GridItem(.flexible(), spacing: 10),
+                            GridItem(.flexible(), spacing: 10),
+                        ]
+                        LazyVGrid(columns: columns, spacing: 10) {
+                            ForEach(viewModel.recentCards.prefix(6)) { card in
+                                RecentCardTile(card: card) {
+                                    withAnimation(.spring(response: 0.3)) {
+                                        viewModel.addCard(card)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                }
 
                 Spacer().frame(height: 100)
             }
@@ -672,6 +708,62 @@ struct FlowLayout: Layout {
             if x + s.width > bounds.maxX, x > bounds.minX { x = bounds.minX; y += rowH + spacing; rowH = 0 }
             v.place(at: CGPoint(x: x, y: y), proposal: .unspecified); x += s.width + spacing; rowH = max(rowH, s.height)
         }
+    }
+}
+
+// MARK: - Recent Card Tile
+
+struct RecentCardTile: View {
+    let card: Card
+    let onTap: () -> Void
+    @State private var isPressed = false
+    
+    private var uiImage: UIImage? {
+        guard let base64 = card.imageBase64,
+              let data = Data(base64Encoded: base64) else { return nil }
+        return UIImage(data: data)
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 0) {
+                Group {
+                    if let uiImage = uiImage {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color(hex: "C5D8F5").opacity(0.4))
+                    }
+                }
+                .frame(height: 70)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .padding(.horizontal, 8)
+                .padding(.top, 8)
+
+                Text(card.word)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(Color(hex: "2C3E50"))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 8)
+            }
+            .frame(height: 120)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color(hex: "C5D8F5").opacity(0.2))
+                    .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
+            )
+            .scaleEffect(isPressed ? 0.94 : 1.0)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in withAnimation(.easeInOut(duration: 0.1)) { isPressed = true } }
+                .onEnded   { _ in withAnimation(.easeInOut(duration: 0.15)) { isPressed = false } }
+        )
     }
 }
 

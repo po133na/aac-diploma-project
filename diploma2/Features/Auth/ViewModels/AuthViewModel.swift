@@ -21,10 +21,14 @@ final class AuthViewModel: ObservableObject {
     @Published var emailTakenError: String?
 
     private let authService = AuthService()
+    
+    // Для доступа из View
+    var authServiceAccess: AuthService { authService }
 
-    // MARK: - Init — проверяем есть ли сохранённый токен
+    // MARK: - Init — проверяем есть ли сохранённый токен и rememberMe
     init() {
-        if APIClient.shared.isAuthenticated {
+        let rememberMe = UserDefaults.standard.bool(forKey: "remember_me")
+        if rememberMe && APIClient.shared.isAuthenticated {
             Task { await tryRestoreSession() }
         }
     }
@@ -51,7 +55,7 @@ final class AuthViewModel: ObservableObject {
 
     // MARK: - Login
 
-    func login(email: String, password: String) async {
+    func login(email: String, password: String, rememberMe: Bool = false) async {
         isLoading = true
         loginError = nil
         defer { isLoading = false }
@@ -60,6 +64,9 @@ final class AuthViewModel: ObservableObject {
             let user = try await authService.login(email: email, password: password)
             currentUser = user
             isAuthenticated = true
+            
+            // Сохраняем флаг rememberMe
+            UserDefaults.standard.set(rememberMe, forKey: "remember_me")
         } catch APIError.unauthorized {
             loginError = "Double-check your information and try again"
         } catch APIError.serverError(401, _) {

@@ -8,6 +8,7 @@ struct LoginView: View {
     @State private var email        = ""
     @State private var password     = ""
     @State private var rememberMe   = false
+    @State private var showForgotPassword = false
     @FocusState private var focused: Field?
 
     private enum Field { case email, password }
@@ -97,7 +98,7 @@ struct LoginView: View {
                                 Spacer()
 
                                 Button("Forgot Password ?") {
-                                    // TODO: forgot password flow
+                                    showForgotPassword = true
                                 }
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundColor(AuthColors.titleText)
@@ -112,7 +113,7 @@ struct LoginView: View {
                             ) {
                                 focused = nil
                                 authViewModel.loginError = nil
-                                Task { await authViewModel.login(email: email, password: password) }
+                                Task { await authViewModel.login(email: email, password: password, rememberMe: rememberMe) }
                             }
 
                             // Разделитель
@@ -137,6 +138,10 @@ struct LoginView: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: isError)
+        .sheet(isPresented: $showForgotPassword) {
+            ForgotPasswordView()
+                .environmentObject(authViewModel)
+        }
     }
 }
 

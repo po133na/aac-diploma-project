@@ -18,12 +18,14 @@ final class ImageGenService {
     ///   - word: слово на русском или казахском
     ///   - language: "ru" или "kk"
     ///   - categoryId: опциональный ID категории
+    ///   - style: стиль изображения ("cartoon", "realistic", "watercolor", "simple")
     /// - Returns: сгенерированное изображение в base64 и слово на английском (translated_word)
-    func generateImage(word: String, language: String, categoryId: Int? = nil) async throws -> CardGenerateResponse {
+    func generateImage(word: String, language: String, categoryId: Int? = nil, style: String = "cartoon") async throws -> CardGenerateResponse {
         let body: [String: Any] = [
             "word": word,
             "language": language,
-            "category_id": categoryId ?? NSNull()
+            "category_id": categoryId ?? NSNull(),
+            "style": style
         ]
         let response: CardGenerateResponse = try await client.request(
             path: "/cards/generate",

@@ -13,6 +13,7 @@ import UIKit
 
 struct CardManagerView: View {
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var homeViewModel: HomeViewModel
     @State private var showCreateCard     = false
     @State private var showCreateCategory = false
 
@@ -162,9 +163,11 @@ struct CardManagerView: View {
         .navigationBarHidden(true)
         .sheet(isPresented: $showCreateCard) {
             CreateCardFlow()
+                .environmentObject(homeViewModel)
         }
         .sheet(isPresented: $showCreateCategory) {
             CreateCategoryFlow()
+                .environmentObject(homeViewModel)
         }
     }
 }
@@ -226,11 +229,13 @@ enum CreateCardStep: Int, CaseIterable {
 
 struct CreateCardFlow: View {
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var homeViewModel: HomeViewModel
     @State private var step: CreateCardStep = .imageSource
     @State private var useAI = true
     @State private var imagePrompt = ""
     @State private var cardName = ""
-    @State private var selectedCategory = ""
+    @State private var selectedCategoryId: Int? = nil
+    @State private var selectedStyle = "cartoon"
     @State private var generatedImageBase64: String? = nil
     @State private var isLoading = false
     @State private var errorMessage: String? = nil
@@ -250,7 +255,8 @@ struct CreateCardFlow: View {
             let response = try await ImageGenService.shared.generateImage(
                 word: imagePrompt,
                 language: "ru", // TODO: взять из настроек пользователя
-                categoryId: nil
+                categoryId: nil,
+                style: selectedStyle
             )
             generatedImageBase64 = response.image_base64
             return true
@@ -285,6 +291,7 @@ struct CreateCardFlow: View {
                 case .describeImage:
                     CardDescribeStep(
                         prompt: $imagePrompt,
+                        selectedStyle: $selectedStyle,
                         isLoading: $isLoading,
                         errorMessage: $errorMessage,
                         generateAction: generateImage,
@@ -303,7 +310,9 @@ struct CreateCardFlow: View {
                 case .saveCard:
                     CardSaveStep(
                         cardName: cardName,
-                        selectedCategory: $selectedCategory
+                        imageBase64: generatedImageBase64,
+                        selectedStyle: selectedStyle,
+                        selectedCategoryId: $selectedCategoryId
                     ) {
                         step = .success
                     }
@@ -459,10 +468,18 @@ private struct ImageSourceRow: View {
 
 private struct CardDescribeStep: View {
     @Binding var prompt: String
+    @Binding var selectedStyle: String
     @Binding var isLoading: Bool
     @Binding var errorMessage: String?
     let generateAction: () async -> Bool
     let onSuccess: () -> Void
+    
+    private let styles = [
+        ("cartoon", "🎨 Cartoon", "Яркие цвета, простые линии"),
+        ("realistic", "📷 Realistic", "Реалистичные фото"),
+        ("watercolor", "🖌️ Watercolor", "Акварельная живопись"),
+        ("simple", "✨ Simple", "Простые иконки")
+    ]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -730,8 +747,28 @@ private struct CardNameStep: View {
 
 private struct CardSaveStep: View {
     let cardName: String
-    @Binding var selectedCategory: String
+    let imageBase64: String?
+    let selectedStyle: String
+    @Binding var selectedCategoryId: Int?
+    @EnvironmentObject var homeViewModel: HomeViewModel
+    @State private var categories: [Category] = []
+    @State private var isLoading = false
+    @State private var errorMessage: String?
     let onSave: () -> Void
+    
+    private var uiImage: UIImage? {
+        guard let base64 = imageBase64,
+              let data = Data(base64Encoded: base64) else { return nil }
+        return UIImage(data: data)
+    }
+    
+    private var selectedCategoryName: String {
+        guard let selectedId = selectedCategoryId,
+              let category = categories.first(where: { $0.id == selectedId }) else {
+            return "Select category"
+        }
+        return category.name
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -757,11 +794,19 @@ private struct CardSaveStep: View {
                             .foregroundColor(Color(hex: "6B8BAE"))
                     }
 
-                    // Превью карточки
+                    // Превью карточки с реальным изображением
                     VStack(spacing: 8) {
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(hex: "C5D8F5"))
-                            .frame(width: 130, height: 130)
+                        if let uiImage = uiImage {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 130, height: 130)
+                                .cornerRadius(16)
+                        } else {
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(hex: "C5D8F5"))
+                                .frame(width: 130, height: 130)
+                        }
 
                         Text(cardName.isEmpty ? "music" : cardName)
                             .font(.system(size: 14, weight: .medium))
@@ -781,23 +826,43 @@ private struct CardSaveStep: View {
                             .font(.system(size: 13))
                             .foregroundColor(Color(hex: "6B8BAE"))
 
-                        HStack {
-                            Text(selectedCategory.isEmpty ? "" : selectedCategory)
-                                .font(.system(size: 15))
-                                .foregroundColor(Color(hex: "1C3F6E"))
-                            Spacer()
-                            Image(systemName: "chevron.down")
-                                .foregroundColor(Color(hex: "9BB8CC"))
+                        Menu {
+                            Button("No category") {
+                                selectedCategoryId = nil
+                            }
+                            Divider()
+                            ForEach(categories) { category in
+                                Button(category.name) {
+                                    selectedCategoryId = category.id
+                                }
+                            }
+                        } label: {
+                            HStack {
+                                Text(selectedCategoryName)
+                                    .font(.system(size: 15))
+                                    .foregroundColor(Color(hex: "1C3F6E"))
+                                Spacer()
+                                Image(systemName: "chevron.down")
+                                    .foregroundColor(Color(hex: "9BB8CC"))
+                            }
+                            .padding(14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color.white)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .stroke(Color(hex: "D0E5F0"), lineWidth: 1)
+                                    )
+                            )
                         }
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(Color.white)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .stroke(Color(hex: "D0E5F0"), lineWidth: 1)
-                                )
-                        )
+                    }
+                    
+                    // Сообщение об ошибке
+                    if let errorMessage = errorMessage {
+                        Text(errorMessage)
+                            .font(.system(size: 14))
+                            .foregroundColor(Color.red)
+                            .padding(.top, 8)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -805,19 +870,73 @@ private struct CardSaveStep: View {
             }
 
             // Save Card кнопка
-            Button(action: onSave) {
-                Text("Save Card →")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18)
-                            .fill(Color(hex: "6DBF82"))
-                    )
+            Button(action: saveCard) {
+                HStack(spacing: 8) {
+                    if isLoading {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 14, weight: .bold))
+                    }
+                    Text(isLoading ? "Saving..." : "Save Card →")
+                        .font(.system(size: 17, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
+                .background(
+                    RoundedRectangle(cornerRadius: 18)
+                        .fill(Color(hex: "6DBF82"))
+                )
             }
+            .disabled(isLoading)
+            .opacity(isLoading ? 0.7 : 1)
             .padding(.horizontal, 20)
             .padding(.bottom, 32)
+        }
+        .onAppear {
+            loadCategories()
+        }
+    }
+    
+    private func loadCategories() {
+        Task {
+            do {
+                let categoryService = CategoryService()
+                categories = try await categoryService.getCategories()
+            } catch {
+                print("Failed to load categories: \(error)")
+            }
+        }
+    }
+    
+    private func saveCard() {
+        guard !cardName.isEmpty else { return }
+        
+        isLoading = true
+        errorMessage = nil
+        
+        Task {
+            do {
+                let cardService = CardService()
+                // TODO: Получить язык из настроек пользователя
+                let language = "ru"
+                let card = try await cardService.createCard(
+                    word: cardName,
+                    language: language,
+                    categoryId: selectedCategoryId,
+                    style: selectedStyle
+                )
+                // Обновляем recent cards на главном экране
+                await homeViewModel.loadRecentCards()
+                isLoading = false
+                onSave()
+            } catch {
+                errorMessage = error.localizedDescription
+                isLoading = false
+            }
         }
     }
 }
@@ -930,6 +1049,7 @@ enum CreateCategoryStep {
 
 struct CreateCategoryFlow: View {
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var homeViewModel: HomeViewModel
     @State private var step: CreateCategoryStep = .nameCategory
     @State private var categoryName = ""
     @State private var selectedCardIds: Set<UUID> = []
@@ -955,8 +1075,8 @@ struct CreateCategoryFlow: View {
     private var stepLabel: String {
         switch step {
         case .nameCategory:  return "STEP 1: NAME CATEGORY"
-        case .addCards:      return "STEP 3: ADD CARDS (OPTIONAL)"
-        case .savingPreview: return "STEP 1: SAVE CATEGORY"
+        case .addCards:      return "STEP 2: ADD CARDS (OPTIONAL)"
+        case .savingPreview: return "STEP 3: SAVE CATEGORY"
         case .success:       return ""
         }
     }
@@ -1205,6 +1325,9 @@ private struct SelectableCardView: View {
 
 private struct CategorySaveStep: View {
     let categoryName: String
+    @EnvironmentObject var homeViewModel: HomeViewModel
+    @State private var isLoading = false
+    @State private var errorMessage: String?
     let onSave: () -> Void
 
     var body: some View {
@@ -1235,31 +1358,77 @@ private struct CategorySaveStep: View {
                         .fill(Color(hex: "C5E8F5"))
                         .frame(height: 100)
                         .overlay(
-                            Text("Yes")
-                                .font(.system(size: 13, weight: .medium))
+                            Text(categoryName.isEmpty ? "New Category" : categoryName)
+                                .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(Color(hex: "1C3F6E"))
                                 .padding(.bottom, 8),
                             alignment: .bottom
                         )
                         .padding(.horizontal, 40)
+                    
+                    // Сообщение об ошибке
+                    if let errorMessage = errorMessage {
+                        Text(errorMessage)
+                            .font(.system(size: 14))
+                            .foregroundColor(Color.red)
+                            .padding(.top, 8)
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
             }
 
-            Button(action: onSave) {
-                Text("Create Category")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18)
-                            .fill(Color(hex: "6DBF82"))
-                    )
+            Button(action: createCategory) {
+                HStack(spacing: 8) {
+                    if isLoading {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 14, weight: .bold))
+                    }
+                    Text(isLoading ? "Creating..." : "Create Category")
+                        .font(.system(size: 17, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
+                .background(
+                    RoundedRectangle(cornerRadius: 18)
+                        .fill(Color(hex: "6DBF82"))
+                )
             }
+            .disabled(isLoading)
+            .opacity(isLoading ? 0.7 : 1)
             .padding(.horizontal, 20)
             .padding(.bottom, 32)
+        }
+    }
+    
+    private func createCategory() {
+        guard !categoryName.isEmpty else { return }
+        
+        isLoading = true
+        errorMessage = nil
+        
+        Task {
+            do {
+                let categoryService = CategoryService()
+                _ = try await categoryService.createCategory(
+                    name: categoryName,
+                    nameKk: nil,
+                    nameEn: nil,
+                    icon: nil
+                )
+                // Обновляем список категорий на главном экране
+                await homeViewModel.refreshCategories()
+                isLoading = false
+                onSave()
+            } catch {
+                errorMessage = error.localizedDescription
+                isLoading = false
+            }
         }
     }
 }
@@ -1417,6 +1586,41 @@ struct CreateFlowTopBar: View {
             }
             .frame(height: 3)
         }
+    }
+}
+
+// MARK: - Style Chip
+
+private struct StyleChip: View {
+    let title: String
+    let description: String
+    let isSelected: Bool
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(isSelected ? Color(hex: "7C5CBF") : Color(hex: "1C3F6E"))
+                
+                Text(description)
+                    .font(.system(size: 11))
+                    .foregroundColor(isSelected ? Color(hex: "9B7CE0") : Color(hex: "6B8BAE"))
+                    .lineLimit(2)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isSelected ? Color(hex: "F0E8FF") : Color.white)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(isSelected ? Color(hex: "7C5CBF") : Color(hex: "D0E5F0"), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
