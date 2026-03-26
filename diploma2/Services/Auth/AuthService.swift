@@ -40,7 +40,7 @@ final class AuthService {
     func register(firstName: String, lastName: String, email: String, password: String) async throws -> User {
         let username = "\(firstName) \(lastName)".trimmingCharacters(in: .whitespaces)
         let body = RegisterRequest(email: email, username: username, password: password)
-        let user: User = try await client.request(path: "/auth/register", method: "POST", body: body, requiresAuth: false)
+        let user: User = try await client.request(path: "/auth/register", method: "POST", body: body)
         return user
     }
 
@@ -50,8 +50,7 @@ final class AuthService {
         let tokenResponse: TokenResponse = try await client.request(
             path: "/auth/login",
             method: "POST",
-            body: body,
-            requiresAuth: false
+            body: body
         )
         client.saveToken(tokenResponse.accessToken)
 
@@ -73,7 +72,7 @@ final class AuthService {
     // Забыл пароль
     func forgotPassword(email: String) async throws -> MessageResponse {
         let body = ForgotPasswordRequest(email: email)
-        return try await client.request(path: "/auth/forgot-password", method: "POST", body: body, requiresAuth: false)
+        return try await client.request(path: "/auth/forgot-password", method: "POST", body: body)
     }
 
     // Смена пароля (авторизованный)

@@ -194,15 +194,15 @@ struct PhraseCreate: Codable {
 
 // MARK: - TTS
 
-struct TTSResponse: Codable {
-    let audioBase64: String
-    let format: String
-
-    enum CodingKeys: String, CodingKey {
-        case audioBase64 = "audio_base64"
-        case format
-    }
-}
+//struct TTSResponse: Codable {
+//    let audioBase64: String
+//    let format: String
+//
+//    enum CodingKeys: String, CodingKey {
+//        case audioBase64 = "audio_base64"
+//        case format
+//    }
+//}
 
 // MARK: - Stats
 

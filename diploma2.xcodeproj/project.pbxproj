@@ -40,6 +40,7 @@
 		F26858712F69EAB400623C8D /* Exceptions for "diploma2" folder in "diploma2" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Info.plist,
 				Resources/Info.plist,
 			);
 			target = F2179CC72F3DF0FB0083764D /* diploma2 */;
@@ -435,6 +436,7 @@
 				DEVELOPMENT_TEAM = CUSRB2J8W9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = diploma2/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -465,6 +467,7 @@
 				DEVELOPMENT_TEAM = CUSRB2J8W9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = diploma2/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

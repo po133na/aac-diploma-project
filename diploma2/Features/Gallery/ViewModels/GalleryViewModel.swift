@@ -1,4 +1,3 @@
-// Features/Gallery/ViewModels/GalleryViewModel.swift
 import Foundation
 
 @MainActor
@@ -11,7 +10,9 @@ final class GalleryViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
-    private let cardService = CardService.shared
+    // MARK: - Services
+    private let cardService      = CardService.shared
+    private let categoryService  = CategoryService.shared
 
     func loadData() async {
         isLoading = true
@@ -21,48 +22,45 @@ final class GalleryViewModel: ObservableObject {
             group.addTask { await self.loadCategories() }
             group.addTask { await self.loadFavorites() }
             group.addTask { await self.loadRecent() }
-            // group.addTask { await self.loadPhrases() } // временно отключено
         }
     }
 
     private func loadCategories() async {
-        do { categories = try await cardService.fetchCategories() }
+        do { categories = try await categoryService.getCategories() }
         catch {
             print("[GalleryViewModel] loadCategories error: \(error)")
-            errorMessage = "Не удалось загрузить категории: \(error.localizedDescription)"
+            errorMessage = error.localizedDescription
         }
     }
 
     private func loadFavorites() async {
         do {
-            let all = try await cardService.fetchCards()
+            let all = try await cardService.getCards()
             favoriteCards = all.filter { $0.isFavorite }
         } catch {
             print("[GalleryViewModel] loadFavorites error: \(error)")
-            errorMessage = "Не удалось загрузить карточки: \(error.localizedDescription)"
+            errorMessage = error.localizedDescription
         }
     }
 
     private func loadRecent() async {
         do {
-            let all = try await cardService.fetchCards()
+            let all = try await cardService.getCards()
             recentCards = Array(all.prefix(20))
         } catch {
             print("[GalleryViewModel] loadRecent error: \(error)")
-            errorMessage = "Не удалось загрузить карточки: \(error.localizedDescription)"
+            errorMessage = error.localizedDescription
         }
     }
 
     private func loadPhrases() async {
-        // временно оставляем пустым, пока не реализован PhraseService
         savedPhrases = []
     }
 
     func toggleFavorite(_ card: Card) {
         Task {
             do {
-                let updated = try await cardService.toggleFavorite(id: card.id)
-                // Обновляем массивы
+                let updated = try await cardService.toggleFavorite(card: card)
                 if let idx = favoriteCards.firstIndex(where: { $0.id == updated.id }) {
                     if updated.isFavorite {
                         favoriteCards[idx] = updated
@@ -72,7 +70,6 @@ final class GalleryViewModel: ObservableObject {
                 } else if updated.isFavorite {
                     favoriteCards.insert(updated, at: 0)
                 }
-                // Обновляем recentCards
                 if let idx = recentCards.firstIndex(where: { $0.id == updated.id }) {
                     recentCards[idx] = updated
                 }
@@ -83,20 +80,13 @@ final class GalleryViewModel: ObservableObject {
     }
 
     func deletePhrase(_ phrase: Phrase) {
-        Task {
-            do {
-                // Пока не реализовано
-                savedPhrases.removeAll { $0.id == phrase.id }
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
+        savedPhrases.removeAll { $0.id == phrase.id }
     }
 
     func createFolder(name: String, emoji: String?) {
         Task {
             do {
-                let category = try await cardService.createCategory(
+                let category = try await categoryService.createCategory(
                     name: name,
                     nameKk: nil,
                     nameEn: nil,
@@ -111,8 +101,9 @@ final class GalleryViewModel: ObservableObject {
 
     func speakCard(_ card: Card) {
         Task {
-            let lang = AppLanguage(rawValue: UserDefaults.standard.string(forKey: "preferred_language") ?? "ru") ?? .russian
-            await TTSService.shared.speak(text: card.word, language: lang.rawValue)
+            let langRaw = UserDefaults.standard.string(forKey: "preferred_language") ?? "ru"
+            let lang = AppLanguage(rawValue: langRaw) ?? .russian
+            await TTSService.shared.speak(text: card.word, language: lang)
         }
     }
 }

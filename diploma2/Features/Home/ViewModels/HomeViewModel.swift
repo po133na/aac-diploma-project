@@ -25,10 +25,10 @@ final class HomeViewModel: ObservableObject {
     @Published var errorMessage: String?
 
     // MARK: - Services
-    private let cardService     = CardService()
-    private let categoryService = CategoryService()
+    private let cardService     = CardService.shared
+    private let categoryService = CategoryService.shared
     private let phraseService   = PhraseService()
-    let ttsService              = TTSService()
+    let ttsService              = TTSService.shared
 
     // MARK: - Computed
 

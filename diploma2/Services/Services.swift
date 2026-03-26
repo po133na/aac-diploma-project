@@ -5,11 +5,14 @@
 //  Created by Symbat Bayanbayeva on 20.03.2026.
 //
 
-// Services/CardService.swift
+// Services.swift
 
 import Foundation
 
 final class CardService {
+    static let shared = CardService()  // ← добавить
+    private init() {}                  // ← добавить
+
     private let client = APIClient.shared
 
     // Получить карточки (с фильтрами)
@@ -66,6 +69,9 @@ final class CardService {
 // MARK: - CategoryService
 
 final class CategoryService {
+    static let shared = CategoryService()  // ← добавить
+    private init() {}
+    
     private let client = APIClient.shared
 
     // Получить все категории (системные + пользовательские)
@@ -86,8 +92,8 @@ final class CategoryService {
     }
 }
 
-// MARK: - PhraseService
-
+//// MARK: - PhraseService
+//
 final class PhraseService {
     private let client = APIClient.shared
 
@@ -127,13 +133,16 @@ final class PhraseService {
         try await client.requestVoid(path: "/phrases/\(id)", method: "DELETE")
     }
 }
-
-// MARK: - TTSService
-
+//
+//// MARK: - TTSService
+//
 import AVFoundation
 
 @MainActor
 final class TTSService: ObservableObject {
+    static let shared = TTSService()  // ← добавить
+    private init() {}                  // ← добавить
+
     private let client = APIClient.shared
     private var audioPlayer: AVAudioPlayer?
 
@@ -220,6 +229,14 @@ private struct TTSRequestBody: Encodable {
     let language: String
 }
 
+struct TTSResponse: Codable {
+    let audioBase64: String
+    
+    enum CodingKeys: String, CodingKey {
+        case audioBase64 = "audio_base64"
+    }
+}
+
 // MARK: - StatsService
 
 final class StatsService {
@@ -229,3 +246,5 @@ final class StatsService {
         return try await client.request(path: "/user/statistics")
     }
 }
+
+
