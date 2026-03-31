@@ -174,11 +174,12 @@ final class APIClient {
     static let shared = APIClient()
     private init() {}
 
-    private let baseURL = "http://апишка:8000"
+    private let baseURL = "http://195.133.194.88:8000"
 
     private var token: String? {
         get { UserDefaults.standard.string(forKey: "auth_token") }
-        set { UserDefaults.standard.set(newValue, forKey: "auth_token") }
+        set { UserDefaults.standard.set(newValue, forKey: "auth_token")
+}
     }
 
     func saveToken(_ token: String) { self.token = token }

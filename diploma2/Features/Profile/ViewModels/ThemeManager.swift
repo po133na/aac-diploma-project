@@ -1,5 +1,5 @@
 //
-//  ThemeManager.swift
+//  Profile/ViewModels/ThemeManager.swift
 //  diploma2
 //
 //  Created by Symbat Bayanbayeva on 26.03.2026.
@@ -30,7 +30,14 @@ final class ThemeManager: ObservableObject {
     @Published var currentColors: ThemeColors = .standard
     
     private var cancellables = Set<AnyCancellable>()
-    
+    // Добавь в ThemeManager
+    var colorScheme: ColorScheme? {
+        isHighContrast ? .light : nil
+    }
+
+    var currentTheme: ThemeColors {
+        currentColors  // просто алиас
+    }
     init() {
         self.isLargeText = UserDefaults.standard.bool(forKey: "large_text")
         self.isHighContrast = UserDefaults.standard.bool(forKey: "high_contrast")
@@ -91,6 +98,10 @@ struct ThemeColors {
     let accent: Color
     let error: Color
     let success: Color
+    let surface: Color   // = cardBackground
+
+
+
     
     static let standard = ThemeColors(
         primary: Color(hex: "5BAECC"),
@@ -101,7 +112,8 @@ struct ThemeColors {
         textSecondary: Color(hex: "6B8BAE"),
         accent: Color(hex: "F5A623"),
         error: Color(hex: "F87171"),
-        success: Color(hex: "10B981")
+        success: Color(hex: "10B981"),
+        surface: .white
     )
     
     static let highContrast = ThemeColors(
@@ -113,7 +125,8 @@ struct ThemeColors {
         textSecondary: Color(hex: "333333"),
         accent: Color(hex: "FF6600"),
         error: Color(hex: "CC0000"),
-        success: Color(hex: "008800")
+        success: Color(hex: "008800"),
+        surface: Color(hex: "F0F0F0")
     )
     
     func color(for key: ThemeColorKey) -> Color {
@@ -127,6 +140,8 @@ struct ThemeColors {
         case .accent: return accent
         case .error: return error
         case .success: return success
+        case .surface: return surface
+
         }
     }
 }
@@ -134,6 +149,7 @@ struct ThemeColors {
 enum ThemeColorKey {
     case primary, secondary, background, cardBackground
     case textPrimary, textSecondary, accent, error, success
+    case surface
 }
 
 // View Modifier для применения темы

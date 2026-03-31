@@ -904,7 +904,7 @@ private struct CardSaveStep: View {
     private func loadCategories() {
         Task {
             do {
-                let categoryService = CategoryService()
+                let categoryService = CategoryService.shared
                 categories = try await categoryService.getCategories()
             } catch {
                 print("Failed to load categories: \(error)")
@@ -920,7 +920,7 @@ private struct CardSaveStep: View {
         
         Task {
             do {
-                let cardService = CardService()
+                let cardService = CardService.shared
                 // TODO: Получить язык из настроек пользователя
                 let language = "ru"
                 let card = try await cardService.createCard(
@@ -1414,7 +1414,7 @@ private struct CategorySaveStep: View {
         
         Task {
             do {
-                let categoryService = CategoryService()
+                let categoryService = CategoryService.shared
                 _ = try await categoryService.createCategory(
                     name: categoryName,
                     nameKk: nil,
@@ -1626,4 +1626,6 @@ private struct StyleChip: View {
 
 #Preview {
     CardManagerView()
+        .environmentObject(HomeViewModel())
+
 }

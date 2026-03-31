@@ -11,6 +11,7 @@ import SwiftUI
 struct MainTabView: View {
     @State private var selectedTab: TabRoute = .home
     @State private var showCreateSheet = false
+    @StateObject private var homeViewModel = HomeViewModel()
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -31,8 +32,9 @@ struct MainTabView: View {
         }
         .ignoresSafeArea(edges: .bottom)
         .sheet(isPresented: $showCreateSheet) {
-            CardManagerView()
-        }
+                    CardManagerView()
+                        .environmentObject(homeViewModel)
+                }
     }
 }
 

@@ -123,7 +123,7 @@ struct ForgotPasswordView: View {
         
         Task {
             do {
-                let response = try await authViewModel.authService.forgotPassword(email: email)
+                let response = try await authViewModel.forgotPassword(email: email)
                 successMessage = response.message
                 errorMessage = nil
             } catch {

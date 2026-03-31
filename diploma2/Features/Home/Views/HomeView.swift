@@ -719,8 +719,9 @@ struct RecentCardTile: View {
     @State private var isPressed = false
     
     private var uiImage: UIImage? {
-        guard let base64 = card.imageBase64,
-              let data = Data(base64Encoded: base64) else { return nil }
+        let base64 = card.imageBase64
+        guard let data = Data(base64Encoded: base64) else { return nil }
+        return UIImage(data: data)
         return UIImage(data: data)
     }
 

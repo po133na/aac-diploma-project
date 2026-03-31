@@ -104,7 +104,11 @@ final class AuthViewModel: ObservableObject {
             registerError = error.localizedDescription
         }
     }
-
+    
+    func forgotPassword(email: String) async throws -> MessageResponse {
+        try await authService.forgotPassword(email: email)
+    }
+    
     // После экрана успеха
     func completeRegistration() {
         isAuthenticated = true
