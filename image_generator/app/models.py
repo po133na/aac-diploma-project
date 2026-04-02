@@ -1,6 +1,9 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, Date
 from sqlalchemy.orm import relationship, declarative_base
-from datetime import datetime
+from datetime import datetime, timezone
+
+def utcnow():
+    return datetime.now(timezone.utc)
 
 Base = declarative_base()
 
@@ -13,7 +16,7 @@ class User(Base):
     username = Column(String(100), nullable=False)
     hashed_password = Column(String(255), nullable=False)
     avatar_base64 = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     cards = relationship("Card", back_populates="owner")
     phrases = relationship("Phrase", back_populates="owner")
@@ -28,8 +31,10 @@ class Category(Base):
     name_kk = Column(String(100), nullable=True)  # Название на казахском
     name_en = Column(String(100), nullable=True)  # Название на английском
     icon = Column(String(50), nullable=True)  # Иконка (emoji или название)
+    cover_image_base64 = Column(Text, nullable=True)  # Обложка категории
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # None = системная категория
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     cards = relationship("Card", back_populates="category")
 
@@ -44,11 +49,12 @@ class Card(Base):
     image_base64 = Column(Text, nullable=False)
     is_favorite = Column(Boolean, default=False)
     usage_count = Column(Integer, default=0)  # Счётчик использований
-    
+
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # None = системная карточка
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     category = relationship("Category", back_populates="cards")
     owner = relationship("User", back_populates="cards")
@@ -58,13 +64,25 @@ class Phrase(Base):
     __tablename__ = "phrases"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False) 
-    card_ids = Column(String(500), nullable=False)  
+    name = Column(String(255), nullable=False)
+    card_ids = Column(String(500), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     usage_count = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     owner = relationship("User", back_populates="phrases")
+
+
+class DeletedItem(Base):
+    """Лог удалённых объектов — чтобы iOS знал что удалить локально при синке"""
+    __tablename__ = "deleted_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_type = Column(String(20), nullable=False)   # "card", "category", "phrase"
+    entity_id = Column(Integer, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # None = системный объект
+    deleted_at = Column(DateTime, default=utcnow, index=True)
 
 
 class UserSettings(Base):
@@ -99,6 +117,6 @@ class PasswordResetToken(Base):
     token = Column(String(255), unique=True, nullable=False, index=True)
     expires_at = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     user = relationship("User")

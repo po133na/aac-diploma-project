@@ -91,6 +91,7 @@ class CategoryCreate(BaseModel):
     name_kk: Optional[str] = None
     name_en: Optional[str] = None
     icon: Optional[str] = None
+    cover_image_base64: Optional[str] = None
 
 
 class CategoryResponse(BaseModel):
@@ -99,8 +100,10 @@ class CategoryResponse(BaseModel):
     name_kk: Optional[str]
     name_en: Optional[str]
     icon: Optional[str]
+    cover_image_base64: Optional[str] = None
     user_id: Optional[int]
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -109,6 +112,14 @@ class CategoryResponse(BaseModel):
 class CategoryListResponse(BaseModel):
     categories: list[CategoryResponse]
     total: int
+
+
+class CategoryCoverUpload(BaseModel):
+    image_base64: str  # base64 из галереи или камеры
+
+
+class CategoryCoverGenerateRequest(BaseModel):
+    prompt: Optional[str] = None  # если None — генерируется по названию категории
 
 
 # === Карточки ===
@@ -156,6 +167,7 @@ class CardResponse(BaseModel):
     category_id: Optional[int]
     user_id: int
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -190,6 +202,7 @@ class PhraseResponse(BaseModel):
     user_id: int
     usage_count: int
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -206,3 +219,18 @@ class PhraseWithCardsResponse(BaseModel):
     cards: list[CardResponse]  # Полные данные карточек
     usage_count: int
     created_at: datetime
+
+
+# === Синхронизация (офлайн режим) ===
+class DeletedItemResponse(BaseModel):
+    entity_type: str   # "card", "category", "phrase"
+    entity_id: int
+    deleted_at: datetime
+
+
+class SyncResponse(BaseModel):
+    cards: list[CardResponse]
+    categories: list[CategoryResponse]
+    phrases: list[PhraseResponse]
+    deleted: list[DeletedItemResponse]
+    synced_at: datetime  # время синка — iOS сохраняет это как следующий since

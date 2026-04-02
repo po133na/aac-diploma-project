@@ -2,8 +2,9 @@ from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 from io import BytesIO
+import asyncio
 import base64
 import secrets
 from PIL import Image
@@ -15,13 +16,15 @@ from app.schemas import (
     UserCreate, UserLogin, UserResponse, UserUpdate, UserStatsResponse, Token,
     UserSettingsResponse, UserSettingsUpdate,
     CategoryCreate, CategoryResponse, CategoryListResponse,
+    CategoryCoverUpload, CategoryCoverGenerateRequest,
     CardCreate, CardUpload, CardGenerateResponse, CardSave, CardUpdate, CardResponse, CardListResponse,
     TTSRequest, TTSResponse,
     PhraseCreate, PhraseResponse, PhraseListResponse, PhraseWithCardsResponse,
-    ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest, MessageResponse
+    ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest, MessageResponse,
+    SyncResponse, DeletedItemResponse
 )
 from app.database import init_db, get_session
-from app.models import User, Category, Card, Phrase, PasswordResetToken, UserSettings, DailyUsage
+from app.models import User, Category, Card, Phrase, PasswordResetToken, UserSettings, DailyUsage, DeletedItem
 from app.translation import translate_to_english
 from app.auth import (
     get_password_hash, verify_password, create_access_token, get_current_user
@@ -45,6 +48,26 @@ app.add_middleware(
 
 # Hugging Face клиент
 hf_client = InferenceClient(token=settings.HUGGINGFACE_API_TOKEN)
+
+async def _generate_image(prompt: str) -> str:
+    """Запускает синхронный HF-клиент в thread pool, возвращает base64 PNG."""
+    image = await asyncio.to_thread(
+        hf_client.text_to_image,
+        prompt,
+        model="black-forest-labs/FLUX.1-schnell",
+    )
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+
+# Системный стиль для всех генерируемых карточек
+IMAGE_STYLE_PROMPT = (
+    "3D cartoon style, soft rounded shapes, volumetric with gentle drop shadows, "
+    "pastel-colored background, neutral beige and soft color accents, "
+    "autism-friendly low contrast palette, no bright or saturated colors, "
+    "no small details, no text, simple and clean, square format, child-friendly AAC card"
+)
 
 
 @app.on_event("startup")
@@ -247,21 +270,33 @@ async def get_statistics(
     current_user: User = Depends(get_current_user)
 ):
     """Статистика пользователя"""
-    cards_result = await session.execute(
-        select(Card).where(Card.user_id == current_user.id)
-    )
-    cards = cards_result.scalars().all()
+    uid = current_user.id
 
-    phrases_result = await session.execute(
-        select(Phrase).where(Phrase.user_id == current_user.id)
-    )
-    phrases = phrases_result.scalars().all()
+    total_cards, total_card_uses = (await session.execute(
+        select(func.count(Card.id), func.coalesce(func.sum(Card.usage_count), 0))
+        .where(Card.user_id == uid)
+    )).one()
 
-    total_card_uses = sum(c.usage_count for c in cards)
-    total_phrase_uses = sum(p.usage_count for p in phrases)
+    total_phrases, total_phrase_uses = (await session.execute(
+        select(func.count(Phrase.id), func.coalesce(func.sum(Phrase.usage_count), 0))
+        .where(Phrase.user_id == uid)
+    )).one()
 
-    top_cards = sorted(cards, key=lambda c: c.usage_count, reverse=True)[:5]
-    top_phrases = sorted(phrases, key=lambda p: p.usage_count, reverse=True)[:5]
+    top_cards_rows = (await session.execute(
+        select(Card.id, Card.word, Card.usage_count)
+        .where(Card.user_id == uid)
+        .order_by(Card.usage_count.desc())
+        .limit(5)
+    )).all()
+    top_cards = [{"id": r[0], "word": r[1], "usage_count": r[2]} for r in top_cards_rows]
+
+    top_phrases_rows = (await session.execute(
+        select(Phrase.id, Phrase.name, Phrase.usage_count)
+        .where(Phrase.user_id == uid)
+        .order_by(Phrase.usage_count.desc())
+        .limit(5)
+    )).all()
+    top_phrases = [{"id": r[0], "name": r[1], "usage_count": r[2]} for r in top_phrases_rows]
 
     # Статистика за последние 7 дней
     today = date.today()
@@ -292,12 +327,12 @@ async def get_statistics(
         check -= timedelta(days=1)
 
     return UserStatsResponse(
-        total_cards=len(cards),
-        total_phrases=len(phrases),
+        total_cards=total_cards,
+        total_phrases=total_phrases,
         total_card_uses=total_card_uses,
         total_phrase_uses=total_phrase_uses,
-        top_cards=[{"id": c.id, "word": c.word, "usage_count": c.usage_count} for c in top_cards],
-        top_phrases=[{"id": p.id, "name": p.name, "usage_count": p.usage_count} for p in top_phrases],
+        top_cards=top_cards,
+        top_phrases=top_phrases,
         member_since=current_user.created_at,
         this_week_cards=this_week_cards,
         current_streak=streak,
@@ -494,38 +529,119 @@ async def delete_category(
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
     
+    session.add(DeletedItem(entity_type="category", entity_id=category_id, user_id=current_user.id))
     await session.delete(category)
     await session.commit()
     return {"status": "deleted", "id": category_id}
 
 
-# ==================== КАРТОЧКИ ====================
-
-@app.post("/cards/generate", response_model=CardGenerateResponse)
-async def generate_card(
-    card_data: CardCreate,
+@app.post("/categories/{category_id}/cover", response_model=CategoryResponse)
+async def upload_category_cover(
+    category_id: int,
+    cover_data: CategoryCoverUpload,
+    session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    """Сгенерировать изображение без сохранения — юзер сам решает сохранить или нет"""
+    """Установить обложку категории из галереи или камеры (base64)"""
+    result = await session.execute(
+        select(Category).where(
+            Category.id == category_id,
+            Category.user_id == current_user.id
+        )
+    )
+    category = result.scalar_one_or_none()
+
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    category.cover_image_base64 = cover_data.image_base64
+    await session.commit()
+    await session.refresh(category)
+    return category
+
+
+@app.post("/categories/{category_id}/cover/generate", response_model=CategoryResponse)
+async def generate_category_cover(
+    category_id: int,
+    body: CategoryCoverGenerateRequest,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Сгенерировать обложку категории через HuggingFace"""
+    result = await session.execute(
+        select(Category).where(
+            Category.id == category_id,
+            Category.user_id == current_user.id
+        )
+    )
+    category = result.scalar_one_or_none()
+
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    subject = body.prompt if body.prompt else (category.name_en or category.name)
+
+    try:
+        category.cover_image_base64 = await _generate_image(f"{subject}, {IMAGE_STYLE_PROMPT}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    await session.commit()
+    await session.refresh(category)
+    return category
+
+
+# ==================== КАРТОЧКИ ====================
+
+async def _get_or_create_generated_category(session: AsyncSession, user_id: int) -> Category:
+    """Возвращает категорию 'Generated' пользователя, создаёт если нет."""
+    result = await session.execute(
+        select(Category).where(
+            Category.name_en == "Generated",
+            Category.user_id == user_id
+        )
+    )
+    category = result.scalar_one_or_none()
+    if not category:
+        category = Category(
+            name="Сгенерированные",
+            name_kk="Жасалған",
+            name_en="Generated",
+            icon="🤖",
+            user_id=user_id,
+        )
+        session.add(category)
+        await session.flush()
+    return category
+
+
+@app.post("/cards/generate", response_model=CardResponse)
+async def generate_card(
+    card_data: CardCreate,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Генерирует изображение и сразу сохраняет в категорию Generated.
+    iOS удаляет карточку если юзер отклонил, или переносит в нужную категорию если принял."""
     try:
         translated = await translate_to_english(card_data.word, card_data.language)
+        image_base64 = await _generate_image(f"{translated}, {IMAGE_STYLE_PROMPT}")
 
-        prompt = f"simple illustration of {translated}, clear icon style, white background, child-friendly"
-        image = hf_client.text_to_image(
-            prompt=prompt,
-            model="black-forest-labs/FLUX.1-schnell",
-        )
+        generated_cat = await _get_or_create_generated_category(session, current_user.id)
+        target_category_id = card_data.category_id if card_data.category_id else generated_cat.id
 
-        buffer = BytesIO()
-        image.save(buffer, format="PNG")
-        image_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
-
-        return CardGenerateResponse(
+        card = Card(
             word=card_data.word,
             language=card_data.language,
             translated_word=translated,
-            image_base64=image_base64
+            image_base64=image_base64,
+            category_id=target_category_id,
+            user_id=current_user.id,
         )
+        session.add(card)
+        await session.commit()
+        await session.refresh(card)
+        return card
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -564,19 +680,9 @@ async def create_card(
         translated = await translate_to_english(card_data.word, card_data.language)
         
         # 2. Генерация изображения
-        prompt = f"simple illustration of {translated}, clear icon style, white background, child-friendly"
-        
-        image = hf_client.text_to_image(
-            prompt=prompt,
-            model="black-forest-labs/FLUX.1-schnell",
-        )
-        
-        # 3. Конвертация в base64
-        buffer = BytesIO()
-        image.save(buffer, format="PNG")
-        image_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
-        
-        # 4. Сохранение в БД
+        image_base64 = await _generate_image(f"{translated}, {IMAGE_STYLE_PROMPT}")
+
+        # 3. Сохранение в БД
         card = Card(
             word=card_data.word,
             language=card_data.language,
@@ -628,29 +734,36 @@ async def get_cards(
     category_id: int = Query(None, description="Фильтр по категории"),
     favorites_only: bool = Query(False, description="Только избранные"),
     search: str = Query(None, description="Поиск по слову"),
+    limit: int = Query(50, ge=1, le=200, description="Количество карточек"),
+    offset: int = Query(0, ge=0, description="Смещение для пагинации"),
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
     """Получить карточки пользователя с фильтрами (включая системные)"""
-    query = select(Card).where(
-        (Card.user_id == current_user.id) | (Card.user_id == None)
-    )
-    
+    base_filter = (Card.user_id == current_user.id) | (Card.user_id == None)
+
+    count_query = select(func.count()).select_from(Card).where(base_filter)
+    query = select(Card).where(base_filter)
+
     if category_id:
         query = query.where(Card.category_id == category_id)
-    
+        count_query = count_query.where(Card.category_id == category_id)
+
     if favorites_only:
         query = query.where(Card.is_favorite == True)
-    
+        count_query = count_query.where(Card.is_favorite == True)
+
     if search:
         query = query.where(Card.word.ilike(f"%{search}%"))
-    
-    query = query.order_by(Card.usage_count.desc(), Card.created_at.desc())
-    
+        count_query = count_query.where(Card.word.ilike(f"%{search}%"))
+
+    total = (await session.execute(count_query)).scalar()
+    query = query.order_by(Card.usage_count.desc(), Card.created_at.desc()).limit(limit).offset(offset)
+
     result = await session.execute(query)
     cards = result.scalars().all()
-    
-    return CardListResponse(cards=cards, total=len(cards))
+
+    return CardListResponse(cards=cards, total=total)
 
 
 @app.get("/cards/{card_id}", response_model=CardResponse)
@@ -759,9 +872,9 @@ async def delete_card(
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
     
+    session.add(DeletedItem(entity_type="card", entity_id=card_id, user_id=current_user.id))
     await session.delete(card)
     await session.commit()
-    
     return {"status": "deleted", "id": card_id}
 
 
@@ -789,13 +902,17 @@ async def create_phrase(
     current_user: User = Depends(get_current_user)
 ):
     """Создать фразу из карточек"""
-    # Проверяем что все карточки принадлежат пользователю
-    for card_id in phrase_data.card_ids:
-        result = await session.execute(
-            select(Card).where(Card.id == card_id, Card.user_id == current_user.id)
+    # Проверяем что все карточки принадлежат пользователю — одним запросом
+    found_result = await session.execute(
+        select(Card.id).where(
+            Card.id.in_(phrase_data.card_ids),
+            Card.user_id == current_user.id
         )
-        if not result.scalar_one_or_none():
-            raise HTTPException(status_code=404, detail=f"Card {card_id} not found")
+    )
+    found_ids = {row[0] for row in found_result.all()}
+    missing = set(phrase_data.card_ids) - found_ids
+    if missing:
+        raise HTTPException(status_code=404, detail=f"Cards not found: {sorted(missing)}")
     
     # Сохраняем ID карточек как строку
     card_ids_str = ",".join(map(str, phrase_data.card_ids))
@@ -958,7 +1075,87 @@ async def delete_phrase(
     if not phrase:
         raise HTTPException(status_code=404, detail="Phrase not found")
     
+    session.add(DeletedItem(entity_type="phrase", entity_id=phrase_id, user_id=current_user.id))
     await session.delete(phrase)
     await session.commit()
-    
     return {"status": "deleted", "id": phrase_id}
+
+
+# ==================== СИНХРОНИЗАЦИЯ ====================
+
+@app.get("/sync", response_model=SyncResponse)
+async def sync(
+    since: datetime = Query(..., description="ISO8601 timestamp последней синхронизации"),
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Возвращает всё что изменилось после `since`.
+    iOS вызывает при запуске/восстановлении сети.
+    Ответ содержит изменённые объекты и список удалённых ID.
+    """
+    uid = current_user.id
+
+    # Карточки: пользовательские + системные изменённые после since
+    cards_result = await session.execute(
+        select(Card).where(
+            ((Card.user_id == uid) | (Card.user_id == None)),
+            Card.updated_at > since
+        )
+    )
+    cards = cards_result.scalars().all()
+
+    # Категории: пользовательские + системные изменённые после since
+    cats_result = await session.execute(
+        select(Category).where(
+            ((Category.user_id == uid) | (Category.user_id == None)),
+            Category.updated_at > since
+        )
+    )
+    categories = cats_result.scalars().all()
+
+    # Фразы пользователя изменённые после since
+    phrases_result = await session.execute(
+        select(Phrase).where(
+            Phrase.user_id == uid,
+            Phrase.updated_at > since
+        )
+    )
+    raw_phrases = phrases_result.scalars().all()
+
+    phrases = [
+        PhraseResponse(
+            id=p.id,
+            name=p.name,
+            card_ids=[int(x) for x in p.card_ids.split(",") if x],
+            user_id=p.user_id,
+            usage_count=p.usage_count,
+            created_at=p.created_at,
+            updated_at=p.updated_at,
+        )
+        for p in raw_phrases
+    ]
+
+    # Удалённые объекты пользователя после since
+    deleted_result = await session.execute(
+        select(DeletedItem).where(
+            DeletedItem.user_id == uid,
+            DeletedItem.deleted_at > since
+        )
+    )
+    deleted = [
+        DeletedItemResponse(
+            entity_type=d.entity_type,
+            entity_id=d.entity_id,
+            deleted_at=d.deleted_at,
+        )
+        for d in deleted_result.scalars().all()
+    ]
+
+    return SyncResponse(
+        cards=cards,
+        categories=categories,
+        phrases=phrases,
+        deleted=deleted,
+        synced_at=datetime.now(timezone.utc),
+    )
