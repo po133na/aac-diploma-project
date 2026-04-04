@@ -803,15 +803,18 @@ async def update_card(
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
     
+    if card_data.word is not None:
+        card.word = card_data.word
+
     if card_data.is_favorite is not None:
         card.is_favorite = card_data.is_favorite
-    
+
     if card_data.category_id is not None:
         card.category_id = card_data.category_id
-    
+
     await session.commit()
     await session.refresh(card)
-    
+
     return card
 
 

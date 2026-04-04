@@ -152,6 +152,7 @@ class CardSave(BaseModel):
 
 
 class CardUpdate(BaseModel):
+    word: Optional[str] = None
     is_favorite: Optional[bool] = None
     category_id: Optional[int] = None
 
@@ -165,7 +166,7 @@ class CardResponse(BaseModel):
     is_favorite: bool
     usage_count: int
     category_id: Optional[int]
-    user_id: int
+    user_id: Optional[int]
     created_at: datetime
     updated_at: Optional[datetime] = None
 
