@@ -214,6 +214,27 @@ final class APIClient {
         let _: EmptyResponse = try await performRequest(path: path, method: method, body: nil as EmptyBody?, queryItems: queryItems)
     }
 
+    // MARK: - Void с raw Data-телом (для PendingActionQueue)
+    func requestVoidWithBody(
+        path: String,
+        method: String,
+        bodyData: Data?
+    ) async throws {
+        var components = URLComponents(string: baseURL + path)!
+        guard let url = components.url else { throw APIError.invalidURL }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = method
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.timeoutInterval = 30
+        if let token { urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        urlRequest.httpBody = bodyData
+
+        let (_, response) = try await URLSession.shared.data(for: urlRequest)
+        guard let httpResponse = response as? HTTPURLResponse else { throw APIError.noData }
+        if httpResponse.statusCode == 401 { clearToken(); throw APIError.unauthorized }
+    }
+
     // MARK: - Приватный метод
     private func performRequest<T: Decodable, B: Encodable>(
         path: String,

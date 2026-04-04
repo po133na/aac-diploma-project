@@ -47,6 +47,7 @@ struct Category: Identifiable, Codable, Equatable {
     var coverImageBase64: String?       // обложка категории (base64)
     var userId: Int?                    // nil = системная
     var createdAt: Date
+    var updatedAt: Date?
 
     var isSystem: Bool { userId == nil }
 
@@ -66,6 +67,7 @@ struct Category: Identifiable, Codable, Equatable {
         case coverImageBase64 = "cover_image_base64"
         case userId          = "user_id"
         case createdAt       = "created_at"
+        case updatedAt       = "updated_at"
     }
 }
 
@@ -100,6 +102,7 @@ struct Card: Identifiable, Codable, Equatable {
     var categoryId: Int?
     var userId: Int?
     var createdAt: Date
+    var updatedAt: Date?
 
     // Декодируем base64 в UIImage
     var image: UIImage? {
@@ -116,6 +119,7 @@ struct Card: Identifiable, Codable, Equatable {
         case categoryId     = "category_id"
         case userId         = "user_id"
         case createdAt      = "created_at"
+        case updatedAt      = "updated_at"
     }
 }
 
@@ -172,6 +176,7 @@ struct Phrase: Identifiable, Codable, Equatable {
     var userId: Int
     var usageCount: Int
     var createdAt: Date
+    var updatedAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case id, name
@@ -179,6 +184,7 @@ struct Phrase: Identifiable, Codable, Equatable {
         case userId     = "user_id"
         case usageCount = "usage_count"
         case createdAt  = "created_at"
+        case updatedAt  = "updated_at"
     }
 }
 
@@ -310,4 +316,31 @@ enum AppLanguage: String, Codable, CaseIterable {
 
 struct MessageResponse: Codable {
     let message: String
+}
+
+// MARK: - Sync (офлайн режим)
+
+struct DeletedItemResponse: Codable {
+    let entityType: String   // "card", "category", "phrase"
+    let entityId: Int
+    let deletedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case entityType = "entity_type"
+        case entityId   = "entity_id"
+        case deletedAt  = "deleted_at"
+    }
+}
+
+struct SyncResponse: Codable {
+    let cards: [Card]
+    let categories: [Category]
+    let phrases: [Phrase]
+    let deleted: [DeletedItemResponse]
+    let syncedAt: Date   // iOS сохраняет как новый since
+
+    enum CodingKeys: String, CodingKey {
+        case cards, categories, phrases, deleted
+        case syncedAt = "synced_at"
+    }
 }

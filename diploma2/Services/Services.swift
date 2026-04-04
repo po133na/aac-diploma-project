@@ -70,6 +70,12 @@ final class CardService {
     func deleteCard(id: Int) async throws {
         try await client.requestVoid(path: "/cards/\(id)", method: "DELETE")
     }
+
+    // Генерация и сохранение в "Generated" категорию (POST /cards/generate)
+    func generateCard(word: String, language: String, categoryId: Int? = nil) async throws -> Card {
+        let body = CardCreate(word: word, language: language, categoryId: categoryId, style: nil)
+        return try await client.request(path: "/cards/generate", method: "POST", body: body)
+    }
 }
 
 // MARK: - CategoryService
@@ -95,6 +101,26 @@ final class CategoryService {
     // Удалить категорию
     func deleteCategory(id: Int) async throws {
         try await client.requestVoid(path: "/categories/\(id)", method: "DELETE")
+    }
+
+    // Загрузить обложку из галереи/камеры
+    func uploadCover(categoryId: Int, imageBase64: String) async throws -> Category {
+        struct Body: Encodable { let image_base64: String }
+        return try await client.request(
+            path: "/categories/\(categoryId)/cover",
+            method: "POST",
+            body: Body(image_base64: imageBase64)
+        )
+    }
+
+    // Сгенерировать обложку через AI
+    func generateCover(categoryId: Int, prompt: String? = nil) async throws -> Category {
+        struct Body: Encodable { let prompt: String? }
+        return try await client.request(
+            path: "/categories/\(categoryId)/cover/generate",
+            method: "POST",
+            body: Body(prompt: prompt)
+        )
     }
 }
 

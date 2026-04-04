@@ -13,8 +13,19 @@ final class GalleryViewModel: ObservableObject {
     // MARK: - Services
     private let cardService      = CardService.shared
     private let categoryService  = CategoryService.shared
+    private let cache            = CacheService.shared
+    private let network          = NetworkMonitor.shared
 
     func loadData() async {
+        // Сразу показываем локальный кеш
+        let cachedAll = cache.loadCards()
+        favoriteCards = cachedAll.filter { $0.isFavorite }
+        recentCards   = Array(cachedAll.prefix(20))
+        categories    = cache.loadCategories()
+        savedPhrases  = cache.loadPhrases()
+
+        guard network.isConnected else { return }
+
         isLoading = true
         defer { isLoading = false }
 
@@ -22,11 +33,15 @@ final class GalleryViewModel: ObservableObject {
             group.addTask { await self.loadCategories() }
             group.addTask { await self.loadFavorites() }
             group.addTask { await self.loadRecent() }
+            group.addTask { await self.loadPhrases() }
         }
     }
 
     private func loadCategories() async {
-        do { categories = try await categoryService.getCategories() }
+        do {
+            categories = try await categoryService.getCategories()
+            cache.saveCategories(categories)
+        }
         catch {
             print("[GalleryViewModel] loadCategories error: \(error)")
             errorMessage = error.localizedDescription
@@ -37,6 +52,7 @@ final class GalleryViewModel: ObservableObject {
         do {
             let all = try await cardService.getCards()
             favoriteCards = all.filter { $0.isFavorite }
+            cache.saveCards(all)
         } catch {
             print("[GalleryViewModel] loadFavorites error: \(error)")
             errorMessage = error.localizedDescription
@@ -54,7 +70,12 @@ final class GalleryViewModel: ObservableObject {
     }
 
     private func loadPhrases() async {
-        savedPhrases = []
+        do {
+            savedPhrases = try await PhraseService().getPhrases()
+            cache.savePhrases(savedPhrases)
+        } catch {
+            print("[GalleryViewModel] loadPhrases error: \(error)")
+        }
     }
 
     func toggleFavorite(_ card: Card) {

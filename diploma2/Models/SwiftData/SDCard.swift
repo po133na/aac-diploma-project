@@ -12,6 +12,7 @@ final class SDCard {
     var usageCount: Int
     var categoryId: Int?
     var createdAt: Date
+    var updatedAt: Date?
 
     init(from card: Card) {
         self.id            = card.id
@@ -23,6 +24,7 @@ final class SDCard {
         self.usageCount    = card.usageCount
         self.categoryId    = card.categoryId
         self.createdAt     = card.createdAt
+        self.updatedAt     = card.updatedAt
     }
 
     func toDomain() -> Card {
@@ -36,7 +38,8 @@ final class SDCard {
             usageCount:    usageCount,
             categoryId:    categoryId,
             userId:        nil,
-            createdAt:     createdAt
+            createdAt:     createdAt,
+            updatedAt:     updatedAt
         )
     }
 }

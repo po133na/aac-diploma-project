@@ -30,6 +30,7 @@ final class HomeViewModel: ObservableObject {
     private let phraseService   = PhraseService()
     private let cache           = CacheService.shared
     private let network         = NetworkMonitor.shared
+    private let syncService     = SyncService.shared
     let ttsService              = TTSService.shared
 
     // MARK: - Pending usage queue
@@ -43,10 +44,14 @@ final class HomeViewModel: ObservableObject {
     // MARK: - Init
 
     init() {
-        // Когда интернет появляется — отправляем накопленную очередь
+        // Когда интернет появляется — синкаем данные и отправляем очереди
         network.connectionRestored
             .sink { [weak self] in
-                Task { await self?.flushPendingUsage() }
+                Task {
+                    await self?.flushPendingUsage()
+                    await PendingActionQueue.shared.flush()
+                    await self?.syncService.sync()
+                }
             }
             .store(in: &cancellables)
     }
@@ -59,9 +64,19 @@ final class HomeViewModel: ObservableObject {
     // MARK: - Загрузка данных
 
     func loadInitialData() async {
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask { await self.loadCategories() }
-            group.addTask { await self.loadRecentCards() }
+        // 1. Сразу показываем кеш (не ждём сеть)
+        let cachedCategories = cache.loadCategories()
+        if !cachedCategories.isEmpty { categories = cachedCategories }
+        let cachedCards = cache.loadCards()
+        if !cachedCards.isEmpty { recentCards = Array(cachedCards.prefix(6)) }
+
+        // 2. В фоне: синкаем с сервером если есть сеть
+        if network.isConnected {
+            Task {
+                await syncService.sync()
+                await loadCategories()
+                await loadRecentCards()
+            }
         }
     }
 

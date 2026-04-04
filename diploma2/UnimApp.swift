@@ -32,6 +32,12 @@ struct SpeakEasyApp: App {
                             .animation(.easeInOut, value: network.isConnected)
                     }
                 }
+                .task {
+                    // Фоновый синк при запуске (если авторизован и есть сеть)
+                    if authViewModel.isAuthenticated && network.isConnected {
+                        await SyncService.shared.sync()
+                    }
+                }
         }
         .modelContainer(CacheService.container)
     }
