@@ -191,26 +191,49 @@ struct HomeContentView: View {
                 // Список категорий
                 if viewModel.isLoadingCategories {
                     ProgressView().padding(.top, 40)
-                } else if viewModel.categories.isEmpty {
-                    // Мок данные — бэкенд недоступен
-                    VStack(spacing: 10) {
-                        ForEach(WordCategory.sampleData) { category in
-                            MockCategoryRow(category: category) {
-                                viewModel.selectedMockCategory = category
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                } else {
+                } else if !viewModel.categories.isEmpty {
                     // Реальные категории из бэкенда
                     VStack(spacing: 10) {
                         ForEach(viewModel.categories) { category in
                             RealCategoryRow(category: category) {
                                 viewModel.selectCategory(category)
                             }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                if !category.isSystem {
+                                    Button(role: .destructive) {
+                                        viewModel.deleteCategory(category)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal, 16)
+                } else if let error = viewModel.errorMessage {
+                    // Ошибка загрузки
+                    VStack(spacing: 12) {
+                        Image(systemName: "wifi.exclamationmark")
+                            .font(.system(size: 36))
+                            .foregroundColor(Color(hex: "9BB8CC"))
+                        Text(error)
+                            .font(.system(size: 13))
+                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                        Button("Try Again") {
+                            Task { await viewModel.loadCategories() }
+                        }
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 10)
+                        .background(Capsule().fill(Color(hex: "5BAECC")))
+                    }
+                    .padding(.top, 40)
+                } else {
+                    // Пусто без ошибки (не должно происходить при наличии системных категорий)
+                    ProgressView().padding(.top, 40)
                 }
                 
                 // Recent Cards (сгенерированные карточки)
@@ -395,7 +418,7 @@ struct MockCategoryDetailView: View {
                                     isFavorite: false,
                                     usageCount: 0,
                                     categoryId: nil,
-                                    userId: 0,
+                                    userId: nil,
                                     createdAt: Date()
                                 )
                                 viewModel.addCard(card)
@@ -470,6 +493,15 @@ struct RealCategoryDetailView: View {
                                     viewModel.addCard(card)
                                 }
                             }
+                            .contextMenu {
+                                if card.userId != nil {
+                                    Button(role: .destructive) {
+                                        viewModel.deleteCard(card)
+                                    } label: {
+                                        Label("Delete card", systemImage: "trash")
+                                    }
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal, 16)
@@ -490,12 +522,13 @@ struct RealCardTile: View {
     let card: Card
     let onTap: () -> Void
     @State private var isPressed = false
+    @State private var uiImage: UIImage? = nil
 
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 0) {
                 Group {
-                    if let image = card.image {
+                    if let image = uiImage {
                         Image(uiImage: image)
                             .resizable()
                             .scaledToFill()
@@ -531,6 +564,15 @@ struct RealCardTile: View {
                 .onChanged { _ in withAnimation(.easeInOut(duration: 0.1)) { isPressed = true } }
                 .onEnded   { _ in withAnimation(.easeInOut(duration: 0.15)) { isPressed = false } }
         )
+        .task(id: card.id) {
+            guard uiImage == nil else { return }
+            let base64 = card.imageBase64
+            let img = await Task.detached(priority: .userInitiated) {
+                guard let data = Data(base64Encoded: base64) else { return UIImage?.none }
+                return UIImage(data: data)
+            }.value
+            uiImage = img
+        }
     }
 }
 
@@ -717,13 +759,7 @@ struct RecentCardTile: View {
     let card: Card
     let onTap: () -> Void
     @State private var isPressed = false
-    
-    private var uiImage: UIImage? {
-        let base64 = card.imageBase64
-        guard let data = Data(base64Encoded: base64) else { return nil }
-        return UIImage(data: data)
-        return UIImage(data: data)
-    }
+    @State private var uiImage: UIImage? = nil
 
     var body: some View {
         Button(action: onTap) {
@@ -765,6 +801,15 @@ struct RecentCardTile: View {
                 .onChanged { _ in withAnimation(.easeInOut(duration: 0.1)) { isPressed = true } }
                 .onEnded   { _ in withAnimation(.easeInOut(duration: 0.15)) { isPressed = false } }
         )
+        .task(id: card.id) {
+            guard uiImage == nil else { return }
+            let base64 = card.imageBase64
+            let img = await Task.detached(priority: .userInitiated) {
+                guard let data = Data(base64Encoded: base64) else { return UIImage?.none }
+                return UIImage(data: data)
+            }.value
+            uiImage = img
+        }
     }
 }
 

@@ -39,14 +39,20 @@ final class CardService {
         return try await client.request(path: "/cards", method: "POST", body: body)
     }
 
+    // Сохранить уже сгенерированную карточку (без повторной генерации)
+    func saveCard(word: String, language: String, translatedWord: String, imageBase64: String, categoryId: Int?) async throws -> Card {
+        let body = CardSaveBody(word: word, language: language, translatedWord: translatedWord, imageBase64: imageBase64, categoryId: categoryId)
+        return try await client.request(path: "/cards/save", method: "POST", body: body)
+    }
+
     // Получить карточку по ID
     func getCard(id: Int) async throws -> Card {
         return try await client.request(path: "/cards/\(id)")
     }
 
-    // Обновить карточку (избранное, категория)
-    func updateCard(id: Int, isFavorite: Bool? = nil, categoryId: Int? = nil) async throws -> Card {
-        let body = CardUpdate(isFavorite: isFavorite, categoryId: categoryId)
+    // Обновить карточку (слово, избранное, категория)
+    func updateCard(id: Int, word: String? = nil, isFavorite: Bool? = nil, categoryId: Int? = nil) async throws -> Card {
+        let body = CardUpdate(word: word, isFavorite: isFavorite, categoryId: categoryId)
         return try await client.request(path: "/cards/\(id)", method: "PATCH", body: body)
     }
 

@@ -12,18 +12,33 @@ import SwiftData
 // MARK: - LocalizationManager
 final class LocalizationManager: ObservableObject {
     static let shared = LocalizationManager()
-    @Published var currentLanguage: AppLanguage = .russian
+
+    @Published var currentLanguage: AppLanguage {
+        didSet { UserDefaults.standard.set(currentLanguage.rawValue, forKey: "app_language") }
+    }
+
+    init() {
+        let saved = UserDefaults.standard.string(forKey: "app_language") ?? ""
+        currentLanguage = AppLanguage(rawValue: saved) ?? .russian
+    }
+
+    func t(_ ru: String, kk: String, en: String) -> String {
+        switch currentLanguage {
+        case .russian:  return ru
+        case .kazakh:   return kk
+        case .english:  return en
+        }
+    }
+
+    // Первый запуск — язык не выбран
+    var isLanguageSelected: Bool {
+        UserDefaults.standard.string(forKey: "app_language") != nil
+    }
 }
 
 // MARK: - AppRouter
 final class AppRouter: ObservableObject {
     @Published var path = NavigationPath()
-}
-
-// MARK: - NetworkMonitor
-final class NetworkMonitor: ObservableObject {
-    static let shared = NetworkMonitor()
-    @Published var isConnected = true
 }
 
 // MARK: - PushNotificationManager

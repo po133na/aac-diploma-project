@@ -29,7 +29,7 @@ final class ImageGenService {
         language: String,
         categoryId: Int? = nil,
         style: String = "cartoon"
-    ) async throws -> CardGenerateResponse {
+    ) async throws -> Card {
         let body = ImageGenRequest(
             word: word,
             language: language,
@@ -42,14 +42,6 @@ final class ImageGenService {
             body: body
         )
     }
-}
-
-struct CardGenerateResponse: Codable {
-    let word: String
-    let language: String
-    let translated_word: String
-    let image_base64: String
-    let category_id: Int?
 }
 
 // Расширение для работы с NSNull в Encodable

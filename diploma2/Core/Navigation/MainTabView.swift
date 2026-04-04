@@ -19,7 +19,6 @@ struct MainTabView: View {
             Group {
                 switch selectedTab {
                 case .home:     HomeView()
-                case .gallery:  GalleryView()
                 case .settings: ProfileView()
                 }
             }
@@ -32,9 +31,12 @@ struct MainTabView: View {
         }
         .ignoresSafeArea(edges: .bottom)
         .sheet(isPresented: $showCreateSheet) {
-                    CardManagerView()
-                        .environmentObject(homeViewModel)
-                }
+            CardManagerView(onDismissToHome: {
+                showCreateSheet = false
+                selectedTab = .home
+            })
+            .environmentObject(homeViewModel)
+        }
     }
 }
 
@@ -54,18 +56,7 @@ struct CustomTabBar: View {
             ) {
                 selectedTab = .home
             }
-            
-            Spacer()
-            
-            // Gallery tab
-            TabBarItem(
-                icon: "photo.on.rectangle",
-                label: "Gallery",
-                isSelected: selectedTab == .gallery
-            ) {
-                selectedTab = .gallery
-            }
-            
+
             Spacer()
 
             // Plus button
@@ -161,7 +152,7 @@ struct CreateCardSheet: View {
 
 // MARK: - Tab Routes
 enum TabRoute: Hashable {
-    case home, gallery, settings
+    case home, settings
 }
 
 #Preview {

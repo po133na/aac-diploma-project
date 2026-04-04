@@ -10,7 +10,8 @@ import SwiftUI
 
 struct LanguageSelectView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
-    var onLanguageSelected: () -> Void   // Callback → переход на Login/Register
+    @EnvironmentObject var localization: LocalizationManager
+    var onLanguageSelected: () -> Void = {}
 
     private let languages: [LanguageOption] = [
         LanguageOption(code: .english,  flag: "🇬🇧", name: "English",   subtitle: "English"),
@@ -35,7 +36,7 @@ struct LanguageSelectView: View {
                     VStack(spacing: 12) {
                         ForEach(languages) { option in
                             LanguageRowView(option: option) {
-                                // Сохраняем выбранный язык
+                                localization.currentLanguage = option.code
                                 authViewModel.selectLanguage(option.code)
                                 onLanguageSelected()
                             }

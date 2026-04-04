@@ -1,6 +1,7 @@
 // Features/Home/ViewModels/HomeViewModel.swift
 import Foundation
 import SwiftUI
+import Combine
 
 @MainActor
 final class HomeViewModel: ObservableObject {
@@ -9,13 +10,11 @@ final class HomeViewModel: ObservableObject {
     @Published var selectedCards: [Card] = []
     @Published var showSpeakModal = false
 
-    // MARK: - Реальные данные (бэкенд)
+    // MARK: - Данные
     @Published var categories: [Category] = []
     @Published var selectedCategory: Category? = nil
     @Published var cardsInCategory: [Card] = []
     @Published var recentCards: [Card] = []
-
-    // MARK: - Мок данные (пока бэкенд не подключён)
     @Published var selectedMockCategory: WordCategory? = nil
 
     // MARK: - State
@@ -23,19 +22,38 @@ final class HomeViewModel: ObservableObject {
     @Published var isLoadingCards = false
     @Published var isCreatingCard = false
     @Published var errorMessage: String?
+    @Published var isOffline = false
 
     // MARK: - Services
     private let cardService     = CardService.shared
     private let categoryService = CategoryService.shared
     private let phraseService   = PhraseService()
+    private let cache           = CacheService.shared
+    private let network         = NetworkMonitor.shared
     let ttsService              = TTSService.shared
+
+    // MARK: - Pending usage queue
+    private let pendingUsageKey = "pending_card_usage"
+    private var pendingCardIds: [Int] {
+        get { UserDefaults.standard.array(forKey: pendingUsageKey) as? [Int] ?? [] }
+        set { UserDefaults.standard.set(newValue, forKey: pendingUsageKey) }
+    }
+    private var cancellables = Set<AnyCancellable>()
+
+    // MARK: - Init
+
+    init() {
+        // Когда интернет появляется — отправляем накопленную очередь
+        network.connectionRestored
+            .sink { [weak self] in
+                Task { await self?.flushPendingUsage() }
+            }
+            .store(in: &cancellables)
+    }
 
     // MARK: - Computed
 
-    var sentenceText: String {
-        selectedCards.map { $0.word }.joined(separator: " ")
-    }
-
+    var sentenceText: String { selectedCards.map { $0.word }.joined(separator: " ") }
     var wordCount: Int { selectedCards.count }
 
     // MARK: - Загрузка данных
@@ -50,34 +68,69 @@ final class HomeViewModel: ObservableObject {
     func loadCategories() async {
         isLoadingCategories = true
         defer { isLoadingCategories = false }
+
+        // Офлайн — сразу берём кеш
+        if !network.isConnected {
+            isOffline = true
+            let cached = cache.loadCategories()
+            if !cached.isEmpty { categories = cached }
+            return
+        }
+
+        isOffline = false
         do {
-            categories = try await categoryService.getCategories()
+            let loaded = try await categoryService.getCategories()
+            categories = loaded
+            errorMessage = nil
+            cache.saveCategories(loaded)
         } catch {
-            // Если бэкенд недоступен — покажем мок данные
-            categories = []
+            // Сеть есть но запрос упал — берём кеш как fallback
+            let cached = cache.loadCategories()
+            if !cached.isEmpty {
+                categories = cached
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
     }
-    
-    func refreshCategories() async {
-        await loadCategories()
-    }
+
+    func refreshCategories() async { await loadCategories() }
 
     func loadRecentCards() async {
+        if !network.isConnected {
+            recentCards = Array(cache.loadCards().prefix(6))
+            return
+        }
         do {
             let all = try await cardService.getCards()
             recentCards = Array(all.prefix(6))
+            cache.saveCards(all)
         } catch {
-            recentCards = []
+            recentCards = Array(cache.loadCards().prefix(6))
         }
     }
 
     func loadCards(for category: Category) async {
         isLoadingCards = true
         defer { isLoadingCards = false }
+
+        if !network.isConnected {
+            cardsInCategory = cache.loadCards(categoryId: category.id)
+            return
+        }
+
         do {
-            cardsInCategory = try await cardService.getCards(categoryId: category.id)
+            let loaded = try await cardService.getCards(categoryId: category.id)
+            cardsInCategory = loaded
+            cache.saveCards(loaded)
         } catch {
-            errorMessage = error.localizedDescription
+            // Fallback на кеш
+            let cached = cache.loadCards(categoryId: category.id)
+            if !cached.isEmpty {
+                cardsInCategory = cached
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -85,7 +138,21 @@ final class HomeViewModel: ObservableObject {
 
     func addCard(_ card: Card) {
         selectedCards.append(card)
-        Task { _ = try? await cardService.useCard(id: card.id) }
+        if network.isConnected {
+            Task { _ = try? await cardService.useCard(id: card.id) }
+        } else {
+            // Сохраняем в очередь — отправим когда появится интернет
+            pendingCardIds.append(card.id)
+        }
+    }
+
+    private func flushPendingUsage() async {
+        let ids = pendingCardIds
+        guard !ids.isEmpty else { return }
+        pendingCardIds = []
+        for id in ids {
+            _ = try? await cardService.useCard(id: id)
+        }
     }
 
     func removeCard(at index: Int) {
@@ -94,20 +161,28 @@ final class HomeViewModel: ObservableObject {
     }
 
     func clearSentence() {
-        withAnimation(.spring(response: 0.3)) {
-            selectedCards.removeAll()
-        }
+        withAnimation(.spring(response: 0.3)) { selectedCards.removeAll() }
     }
 
     func speakSentence() {
         guard !selectedCards.isEmpty else { return }
         showSpeakModal = true
         Task {
-            let lang = AppLanguage(
-                rawValue: UserDefaults.standard.string(forKey: "preferred_language") ?? "ru"
-            ) ?? .russian
+            let lang = detectLanguage(sentenceText)
             await ttsService.speak(text: sentenceText, language: lang)
         }
+    }
+
+    private func detectLanguage(_ text: String) -> AppLanguage {
+        let kazakhSpecific = CharacterSet(charactersIn: "әғқңөұүһӘҒҚҢӨҰҮҺ")
+        for scalar in text.unicodeScalars {
+            if kazakhSpecific.contains(scalar) { return .kazakh }
+        }
+        for scalar in text.unicodeScalars {
+            let v = scalar.value
+            if v >= 0x0400 && v <= 0x04FF { return .russian }
+        }
+        return .english
     }
 
     func savePhraseAs(name: String) async {
@@ -120,7 +195,7 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Навигация (реальные категории)
+    // MARK: - Навигация
 
     func selectCategory(_ category: Category) {
         withAnimation(.easeInOut(duration: 0.25)) {
@@ -152,10 +227,57 @@ final class HomeViewModel: ObservableObject {
             )
             recentCards.insert(card, at: 0)
             if recentCards.count > 6 { recentCards = Array(recentCards.prefix(6)) }
+            cache.saveCards([card])
             return card
         } catch {
             errorMessage = error.localizedDescription
             return nil
+        }
+    }
+
+    // MARK: - Edit / Delete cards
+
+    func deleteCard(_ card: Card) {
+        Task {
+            do {
+                try await cardService.deleteCard(id: card.id)
+                cardsInCategory.removeAll { $0.id == card.id }
+                recentCards.removeAll { $0.id == card.id }
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func updateCard(_ card: Card, word: String? = nil, categoryId: Int? = nil) async {
+        do {
+            let updated = try await cardService.updateCard(
+                id: card.id,
+                isFavorite: nil,
+                categoryId: categoryId
+            )
+            if let idx = cardsInCategory.firstIndex(where: { $0.id == updated.id }) {
+                cardsInCategory[idx] = updated
+            }
+            if let idx = recentCards.firstIndex(where: { $0.id == updated.id }) {
+                recentCards[idx] = updated
+            }
+            cache.saveCards([updated])
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Edit / Delete categories
+
+    func deleteCategory(_ category: Category) {
+        Task {
+            do {
+                try await categoryService.deleteCategory(id: category.id)
+                categories.removeAll { $0.id == category.id }
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -171,6 +293,7 @@ final class HomeViewModel: ObservableObject {
                 if let idx = recentCards.firstIndex(where: { $0.id == updated.id }) {
                     recentCards[idx] = updated
                 }
+                cache.saveCards([updated])
             } catch {
                 errorMessage = error.localizedDescription
             }

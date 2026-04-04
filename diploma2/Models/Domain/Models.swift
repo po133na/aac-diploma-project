@@ -44,6 +44,7 @@ struct Category: Identifiable, Codable, Equatable {
     var nameKk: String?                 // казахское
     var nameEn: String?                 // английское
     var icon: String?                   // emoji
+    var coverImageBase64: String?       // обложка категории (base64)
     var userId: Int?                    // nil = системная
     var createdAt: Date
 
@@ -60,10 +61,11 @@ struct Category: Identifiable, Codable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case id, name, icon
-        case nameKk    = "name_kk"
-        case nameEn    = "name_en"
-        case userId    = "user_id"
-        case createdAt = "created_at"
+        case nameKk          = "name_kk"
+        case nameEn          = "name_en"
+        case coverImageBase64 = "cover_image_base64"
+        case userId          = "user_id"
+        case createdAt       = "created_at"
     }
 }
 
@@ -96,7 +98,7 @@ struct Card: Identifiable, Codable, Equatable {
     var isFavorite: Bool                // бэкенд: is_favorite
     var usageCount: Int
     var categoryId: Int?
-    var userId: Int
+    var userId: Int?
     var createdAt: Date
 
     // Декодируем base64 в UIImage
@@ -134,11 +136,28 @@ struct CardCreate: Codable {
     }
 }
 
+struct CardSaveBody: Codable {
+    let word: String
+    let language: String
+    let translatedWord: String
+    let imageBase64: String
+    let categoryId: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case word, language
+        case translatedWord = "translated_word"
+        case imageBase64 = "image_base64"
+        case categoryId = "category_id"
+    }
+}
+
 struct CardUpdate: Codable {
+    var word: String?
     var isFavorite: Bool?
     var categoryId: Int?
 
     enum CodingKeys: String, CodingKey {
+        case word
         case isFavorite = "is_favorite"
         case categoryId = "category_id"
     }

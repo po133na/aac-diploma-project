@@ -36,7 +36,7 @@
 //    // При деплое заменить на реальный URL
 //    // Для симулятора: http://127.0.0.1:8000
 //    // Для реального устройства: http://YOUR_MAC_IP:8000
-//    private let baseURL = "http://195.133.194.88:8000"
+//    private let baseURL = "http://192.168.1.195:8000"
 //
 //    private var token: String? {
 //        get { UserDefaults.standard.string(forKey: "auth_token") }
@@ -174,7 +174,7 @@ final class APIClient {
     static let shared = APIClient()
     private init() {}
 
-    private let baseURL = "http://195.133.194.88:8000"
+    private let baseURL = "http://192.168.1.195:8000"
 
     private var token: String? {
         get { UserDefaults.standard.string(forKey: "auth_token") }
@@ -245,13 +245,20 @@ final class APIClient {
         case 200...299:
             do {
                 let decoder = JSONDecoder()
-                let formatter = DateFormatter()
-                formatter.locale = Locale(identifier: "en_US_POSIX")
                 decoder.dateDecodingStrategy = .custom { decoder in
                     let container = try decoder.singleValueContainer()
                     let str = try container.decode(String.self)
-                    for format in ["yyyy-MM-dd'T'HH:mm:ss.SSSSSS", "yyyy-MM-dd'T'HH:mm:ss",
-                                   "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ"] {
+                    // ISO8601 with fractional seconds + timezone (handles Z and +00:00)
+                    let iso = ISO8601DateFormatter()
+                    iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                    if let date = iso.date(from: str) { return date }
+                    // ISO8601 without fractional seconds
+                    iso.formatOptions = [.withInternetDateTime]
+                    if let date = iso.date(from: str) { return date }
+                    // Naive datetime (no timezone) — Python default
+                    let formatter = DateFormatter()
+                    formatter.locale = Locale(identifier: "en_US_POSIX")
+                    for format in ["yyyy-MM-dd'T'HH:mm:ss.SSSSSS", "yyyy-MM-dd'T'HH:mm:ss"] {
                         formatter.dateFormat = format
                         if let date = formatter.date(from: str) { return date }
                     }

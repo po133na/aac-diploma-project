@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>NSCameraUsageDescription</key>
+    <string>Take a photo to create a communication card</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Choose a photo from your library to create a communication card</string>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSExceptionDomains</key>
@@ -11,6 +15,11 @@
                 <key>NSExceptionAllowsInsecureHTTPLoads</key>
                 <true/>
                 <key>NSIncludesSubdomains</key>
+                <true/>
+            </dict>
+            <key>localhost</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
                 <true/>
             </dict>
         </dict>
