@@ -34,10 +34,20 @@ struct SpeakEasyApp: App {
                     }
                 }
                 .task {
-                    // Фоновый синк при запуске (если авторизован и есть сеть)
                     if authViewModel.isAuthenticated && network.isConnected {
                         await SyncService.shared.sync()
                     }
+                }
+                // Deep link из виджета: aac://speak?word=хочу
+                .onOpenURL { url in
+                    guard
+                        url.scheme == "aac",
+                        url.host == "speak",
+                        let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                        let word = components.queryItems?.first(where: { $0.name == "word" })?.value,
+                        !word.isEmpty
+                    else { return }
+                    Task { await TTSService.shared.speak(text: word, language: .russian) }
                 }
         }
         .modelContainer(CacheService.container)

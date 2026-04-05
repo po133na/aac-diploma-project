@@ -35,7 +35,10 @@ final class ProfileViewModel: ObservableObject {
     func loadStats() async {
         isLoading = true
         defer { isLoading = false }
-        stats = try? await statsService.getStats()
+        if let loaded = try? await statsService.getStats() {
+            stats = loaded
+            WidgetDataManager.shared.save(topCards: loaded.topCards)
+        }
     }
 
     func changePassword(old: String, new: String) async throws {
