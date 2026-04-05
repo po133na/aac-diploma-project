@@ -11,7 +11,7 @@ import SwiftData
 @main
 struct SpeakEasyApp: App {
     @StateObject private var appRouter     = AppRouter()
-    @StateObject private var themeManager  = ThemeManager()
+    @StateObject private var themeManager  = ThemeManager.shared
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var network       = NetworkMonitor.shared
     @StateObject private var localization  = LocalizationManager.shared
@@ -24,7 +24,8 @@ struct SpeakEasyApp: App {
                 .environmentObject(authViewModel)
                 .environmentObject(network)
                 .environmentObject(localization)
-                .preferredColorScheme(themeManager.colorScheme)
+                .preferredColorScheme(themeManager.isHighContrast ? .dark : nil)
+                .environment(\.sizeCategory, themeManager.isLargeText ? .extraExtraLarge : .large)
                 .overlay(alignment: .top) {
                     if !network.isConnected {
                         OfflineBanner()

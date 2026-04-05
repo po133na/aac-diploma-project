@@ -7,6 +7,23 @@
 
 import SwiftUI
 
+// MARK: - Sentence Token
+
+enum SentenceToken: Identifiable {
+    case card(Card, UUID)
+    case typed(String, UUID)
+
+    var id: UUID {
+        switch self { case .card(_, let u): return u; case .typed(_, let u): return u }
+    }
+    var word: String {
+        switch self { case .card(let c, _): return c.word; case .typed(let t, _): return t }
+    }
+    var isCard: Bool {
+        if case .card = self { return true }; return false
+    }
+}
+
 // MARK: - Word Card
 struct WordCard: Identifiable, Hashable {
     let id = UUID()

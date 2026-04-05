@@ -7,8 +7,13 @@ import Combine
 final class HomeViewModel: ObservableObject {
 
     // MARK: - Sentence builder
-    @Published var selectedCards: [Card] = []
-    @Published var showSpeakModal = false
+    @Published var tokens: [SentenceToken] = []
+    @Published var typedText: String = ""   // текст который юзер сейчас вводит
+
+    /// Все карточки в токенах (для tracking usage / phrase saving)
+    var selectedCards: [Card] {
+        tokens.compactMap { if case .card(let c, _) = $0 { return c } else { return nil } }
+    }
 
     // MARK: - Данные
     @Published var categories: [Category] = []
@@ -58,7 +63,10 @@ final class HomeViewModel: ObservableObject {
 
     // MARK: - Computed
 
-    var sentenceText: String { selectedCards.map { $0.word }.joined(separator: " ") }
+    var sentenceText: String {
+        let parts = tokens.map(\.word) + (typedText.trimmingCharacters(in: .whitespaces).isEmpty ? [] : [typedText.trimmingCharacters(in: .whitespaces)])
+        return parts.joined(separator: " ")
+    }
     var wordCount: Int { selectedCards.count }
 
     // MARK: - Загрузка данных
@@ -152,11 +160,19 @@ final class HomeViewModel: ObservableObject {
     // MARK: - Sentence builder
 
     func addCard(_ card: Card) {
-        selectedCards.append(card)
+        // Фиксируем текущий typed текст как токен перед карточкой
+        let trimmed = typedText.trimmingCharacters(in: .whitespaces)
+        if !trimmed.isEmpty {
+            tokens.append(.typed(trimmed, UUID()))
+            typedText = ""
+        }
+        tokens.append(.card(card, UUID()))
+        if UserDefaults.standard.bool(forKey: "auto_speak") {
+            Task { await ttsService.speak(text: card.word, language: detectLanguage(card.word)) }
+        }
         if network.isConnected {
             Task { _ = try? await cardService.useCard(id: card.id) }
         } else {
-            // Сохраняем в очередь — отправим когда появится интернет
             pendingCardIds.append(card.id)
         }
     }
@@ -170,21 +186,23 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
-    func removeCard(at index: Int) {
-        guard index < selectedCards.count else { return }
-        selectedCards.remove(at: index)
+    func removeToken(_ token: SentenceToken) {
+        tokens.removeAll { $0.id == token.id }
     }
 
     func clearSentence() {
-        withAnimation(.spring(response: 0.3)) { selectedCards.removeAll() }
+        withAnimation(.spring(response: 0.3)) {
+            tokens.removeAll()
+            typedText = ""
+        }
     }
 
     func speakSentence() {
-        guard !selectedCards.isEmpty else { return }
-        showSpeakModal = true
+        let text = sentenceText.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
         Task {
-            let lang = detectLanguage(sentenceText)
-            await ttsService.speak(text: sentenceText, language: lang)
+            let lang = detectLanguage(text)
+            await ttsService.speak(text: text, language: lang)
         }
     }
 

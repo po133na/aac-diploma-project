@@ -1,7 +1,7 @@
 // Features/Home/Views/HomeView.swift
 import SwiftUI
 
-// MARK: - Home View (корневой)
+// MARK: - Home View
 
 struct HomeView: View {
     @StateObject private var viewModel = HomeViewModel()
@@ -11,20 +11,15 @@ struct HomeView: View {
             Color(hex: "EAF4FB").ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Топ панель с построителем предложений
                 SentenceBuilderBar(viewModel: viewModel)
 
-                // Контент
                 if let mockCat = viewModel.selectedMockCategory {
-                    // Мок-категория (офлайн / бэкенд недоступен)
                     MockCategoryDetailView(category: mockCat, viewModel: viewModel)
                         .transition(.move(edge: .trailing))
                 } else if let category = viewModel.selectedCategory {
-                    // Реальная категория из бэкенда
                     RealCategoryDetailView(category: category, viewModel: viewModel)
                         .transition(.move(edge: .trailing))
                 } else {
-                    // Главный список
                     HomeContentView(viewModel: viewModel)
                         .transition(.move(edge: .leading))
                 }
@@ -35,11 +30,6 @@ struct HomeView: View {
         .onAppear {
             Task { await viewModel.loadInitialData() }
         }
-        .sheet(isPresented: $viewModel.showSpeakModal) {
-            SpeakModalView(viewModel: viewModel)
-                .presentationDetents([.fraction(0.55)])
-                .presentationDragIndicator(.visible)
-        }
     }
 }
 
@@ -47,98 +37,124 @@ struct HomeView: View {
 
 struct SentenceBuilderBar: View {
     @ObservedObject var viewModel: HomeViewModel
+    @EnvironmentObject var localization: LocalizationManager
+    @FocusState private var isTyping: Bool
+
+    private var isEmpty: Bool {
+        viewModel.tokens.isEmpty &&
+        viewModel.typedText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
 
     var body: some View {
         VStack(spacing: 0) {
 
-            // Заголовок строки
+            // ── Верхняя строка: аватар + заголовок + Clear + Speak ──
             HStack(spacing: 10) {
                 ZStack {
                     Circle()
-                        .fill(Color(hex: "C5E8F5"))
-                        .frame(width: 36, height: 36)
-                    Image(systemName: "face.smiling")
+                        .fill(Color(hex: "F5D6EC"))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: "bubble.left.fill")
                         .font(.system(size: 18))
-                        .foregroundColor(Color(hex: "5BAECC"))
+                        .foregroundColor(Color(hex: "C97AB2"))
                 }
 
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("My Sentence")
-                        .font(.system(size: 14, weight: .semibold))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(localization.t("Моё предложение", kk: "Менің сөйлемім", en: "My Sentence"))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundColor(Color(hex: "1C3F6E"))
-                    Text("\(viewModel.wordCount) words")
-                        .font(.system(size: 11))
-                        .foregroundColor(Color(hex: "6B8BAE"))
+                    Text(localization.t(
+                        "\(viewModel.wordCount) слов",
+                        kk: "\(viewModel.wordCount) сөз",
+                        en: "\(viewModel.wordCount) words"
+                    ))
+                    .font(.system(size: 12))
+                    .foregroundColor(Color(hex: "6B8BAE"))
                 }
 
                 Spacer()
 
-                if !viewModel.selectedCards.isEmpty {
-                    Button {
-                        viewModel.clearSentence()
-                    } label: {
-                        Text("Clear")
-                            .font(.system(size: 13, weight: .medium))
+                if !isEmpty {
+                    Button { viewModel.clearSentence() } label: {
+                        Text(localization.t("Очистить", kk: "Тазалау", en: "Clear"))
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundColor(Color(hex: "6B8BAE"))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Capsule().fill(Color.white.opacity(0.8)))
                     }
+                    .transition(.opacity)
                 }
 
-                Button {
-                    viewModel.speakSentence()
-                } label: {
-                    HStack(spacing: 5) {
+                Button { viewModel.speakSentence() } label: {
+                    HStack(spacing: 6) {
                         Image(systemName: "speaker.wave.2.fill")
-                            .font(.system(size: 13))
-                        Text("Speak")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 14))
+                        Text(localization.t("Говорить", kk: "Айту", en: "Speak"))
+                            .font(.system(size: 15, weight: .bold))
                     }
                     .foregroundColor(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(Color(hex: "5BAECC")))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Capsule().fill(isEmpty ? Color(hex: "9BB8CC") : Color(hex: "5BAECC")))
                 }
+                .disabled(isEmpty)
             }
             .padding(.horizontal, 16)
-            .padding(.top, 12)
+            .padding(.top, 14)
             .padding(.bottom, 10)
+            .animation(.easeInOut(duration: 0.15), value: isEmpty)
 
-            // Область чипов
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.7))
-                    .frame(height: 52)
-
-                if viewModel.selectedCards.isEmpty {
-                    Text("Tap words to build your sentence...")
-                        .font(.system(size: 14))
-                        .foregroundColor(Color(hex: "9BB8CC"))
-                        .padding(.horizontal, 14)
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
-                            ForEach(viewModel.selectedCards.indices, id: \.self) { idx in
-                                CardChip(word: viewModel.selectedCards[idx].word) {
-                                    viewModel.removeCard(at: idx)
-                                }
+            // ── Единая строка: токены по порядку + поле ввода ──
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    // Токены в порядке добавления
+                    ForEach(viewModel.tokens) { token in
+                        if token.isCard {
+                            // Слово из карточки — с обводкой
+                            WordChip(word: token.word) {
+                                viewModel.removeToken(token)
                             }
+                        } else {
+                            // Зафиксированный текст — без обводки
+                            Text(token.word)
+                                .font(.system(size: 15))
+                                .foregroundColor(Color(hex: "1C3F6E"))
                         }
-                        .padding(.horizontal, 10)
                     }
+
+                    // Поле для текущего ввода
+                    TextField(
+                        isEmpty
+                            ? localization.t("Нажми на карточку или напиши...", kk: "Картаны басыңыз немесе жазыңыз...", en: "Tap a card or type here...")
+                            : localization.t("ещё слово...", kk: "тағы сөз...", en: "add word..."),
+                        text: $viewModel.typedText
+                    )
+                    .font(.system(size: 15))
+                    .foregroundColor(Color(hex: "1C3F6E"))
+                    .focused($isTyping)
+                    .submitLabel(.done)
+                    .onSubmit { isTyping = false }
+                    .frame(minWidth: 140)
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
             }
+            .frame(height: 48)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.white)
+                    .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+            )
             .padding(.horizontal, 16)
-            .padding(.bottom, 12)
+            .padding(.bottom, 14)
+            .contentShape(Rectangle())
+            .onTapGesture { isTyping = true }
         }
-        .background(Color(hex: "D6EEF8").opacity(0.6))
+        .background(Color(hex: "D6EEF8").opacity(0.55))
     }
 }
 
-// MARK: - Card Chip
+// MARK: - Word Chip (слово из карточки — с обводкой)
 
-struct CardChip: View {
+struct WordChip: View {
     let word: String
     let onRemove: () -> Void
 
@@ -150,35 +166,39 @@ struct CardChip: View {
             Button(action: onRemove) {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(Color(hex: "5BAECC"))
+                    .foregroundColor(Color(hex: "6B8BAE"))
             }
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Capsule().fill(Color(hex: "C5E8F5")))
+        .padding(.vertical, 5)
+        .background(
+            Capsule()
+                .strokeBorder(Color(hex: "5BAECC"), lineWidth: 1.5)
+                .background(Capsule().fill(Color(hex: "EAF6FB")))
+        )
     }
 }
 
-// MARK: - Home Content (список категорий)
+// MARK: - Home Content
 
 struct HomeContentView: View {
     @ObservedObject var viewModel: HomeViewModel
+    @EnvironmentObject var localization: LocalizationManager
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
 
-                // Заголовок
                 HStack(spacing: 10) {
                     ZStack {
                         Circle().fill(Color(hex: "F5ECC5")).frame(width: 40, height: 40)
                         Text("✨").font(.system(size: 20))
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Let's Talk!")
+                        Text(localization.t("Давай поговорим!", kk: "Сөйлесейік!", en: "Let's Talk!"))
                             .font(.system(size: 22, weight: .bold))
                             .foregroundColor(Color(hex: "1C3F6E"))
-                        Text("Choose a category to start")
+                        Text(localization.t("Выбери категорию", kk: "Категория таңдаңыз", en: "Choose a category to start"))
                             .font(.system(size: 13))
                             .foregroundColor(Color(hex: "6B8BAE"))
                     }
@@ -188,11 +208,9 @@ struct HomeContentView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 14)
 
-                // Список категорий
                 if viewModel.isLoadingCategories {
                     ProgressView().padding(.top, 40)
                 } else if !viewModel.categories.isEmpty {
-                    // Реальные категории из бэкенда
                     VStack(spacing: 10) {
                         ForEach(viewModel.categories) { category in
                             RealCategoryRow(category: category) {
@@ -211,7 +229,6 @@ struct HomeContentView: View {
                     }
                     .padding(.horizontal, 16)
                 } else if let error = viewModel.errorMessage {
-                    // Ошибка загрузки
                     VStack(spacing: 12) {
                         Image(systemName: "wifi.exclamationmark")
                             .font(.system(size: 36))
@@ -221,7 +238,7 @@ struct HomeContentView: View {
                             .foregroundColor(Color(hex: "6B8BAE"))
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 32)
-                        Button("Try Again") {
+                        Button(localization.tryAgain) {
                             Task { await viewModel.loadCategories() }
                         }
                         .font(.system(size: 15, weight: .semibold))
@@ -232,28 +249,25 @@ struct HomeContentView: View {
                     }
                     .padding(.top, 40)
                 } else {
-                    // Пусто без ошибки (не должно происходить при наличии системных категорий)
                     ProgressView().padding(.top, 40)
                 }
-                
-                // Recent Cards (сгенерированные карточки)
+
                 if !viewModel.recentCards.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
-                            Text("Recent Cards")
+                            Text(localization.recentCards)
                                 .font(.system(size: 16, weight: .bold))
                                 .foregroundColor(Color(hex: "1C3F6E"))
                             Spacer()
                             NavigationLink(destination: CardManagerView()) {
-                                Text("View All >")
+                                Text(localization.viewAll)
                                     .font(.system(size: 13, weight: .medium))
                                     .foregroundColor(Color(hex: "F87171"))
                             }
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 20)
-                        
-                        // Грид карточек
+
                         let columns = [
                             GridItem(.flexible(), spacing: 10),
                             GridItem(.flexible(), spacing: 10),
@@ -275,54 +289,13 @@ struct HomeContentView: View {
                 Spacer().frame(height: 100)
             }
         }
-    }
-}
-
-// MARK: - Mock Category Row (WordCategory — мок)
-
-struct MockCategoryRow: View {
-    let category: WordCategory
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 14) {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(category.color)
-                    .frame(width: 54, height: 54)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(category.name)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(Color(hex: "1C3F6E"))
-                    Text("\(category.words.count) words")
-                        .font(.system(size: 12))
-                        .foregroundColor(Color(hex: "6B8BAE"))
-                    Text(category.subtitle)
-                        .font(.system(size: 12))
-                        .foregroundColor(Color(hex: "6B8BAE"))
-                }
-                Spacer()
-                ZStack {
-                    Circle().fill(category.color.opacity(0.5)).frame(width: 30, height: 30)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(Color(hex: "5BAECC"))
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white)
-                    .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
-            )
+        .refreshable {
+            await viewModel.loadInitialData()
         }
-        .buttonStyle(PlainButtonStyle())
     }
 }
 
-// MARK: - Real Category Row (Category из бэкенда)
+// MARK: - Real Category Row
 
 struct RealCategoryRow: View {
     let category: Category
@@ -366,7 +339,50 @@ struct RealCategoryRow: View {
     }
 }
 
-// MARK: - Mock Category Detail (WordCard — мок)
+// MARK: - Mock Category Row
+
+struct MockCategoryRow: View {
+    let category: WordCategory
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 14) {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(category.color)
+                    .frame(width: 54, height: 54)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(category.name)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(Color(hex: "1C3F6E"))
+                    Text("\(category.words.count) words")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(hex: "6B8BAE"))
+                    Text(category.subtitle)
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(hex: "6B8BAE"))
+                }
+                Spacer()
+                ZStack {
+                    Circle().fill(category.color.opacity(0.5)).frame(width: 30, height: 30)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(hex: "5BAECC"))
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white)
+                    .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Mock Category Detail
 
 struct MockCategoryDetailView: View {
     let category: WordCategory
@@ -381,7 +397,6 @@ struct MockCategoryDetailView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
-                // Хедер
                 HStack {
                     Button { viewModel.goBack() } label: {
                         ZStack {
@@ -403,12 +418,10 @@ struct MockCategoryDetailView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 12)
 
-                // Грид мок-слов
                 LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(category.words) { word in
                         WordCardView(word: word) {
                             withAnimation(.spring(response: 0.3)) {
-                                // Конвертируем WordCard → Card
                                 let card = Card(
                                     id: 0,
                                     word: word.word,
@@ -437,7 +450,7 @@ struct MockCategoryDetailView: View {
     }
 }
 
-// MARK: - Real Category Detail (Card из бэкенда)
+// MARK: - Real Category Detail
 
 struct RealCategoryDetailView: View {
     let category: Category
@@ -576,7 +589,7 @@ struct RealCardTile: View {
     }
 }
 
-// MARK: - Word Card View (для мок-данных)
+// MARK: - Word Card View (mock)
 
 struct WordCardView: View {
     let word: WordCard
@@ -640,90 +653,6 @@ struct QuickTipBanner: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color(hex: "E8F5FF"))
         )
-    }
-}
-
-// MARK: - Speak Modal
-
-struct SpeakModalView: View {
-    @ObservedObject var viewModel: HomeViewModel
-    @Environment(\.dismiss) var dismiss
-
-    var body: some View {
-        ZStack {
-            Color(hex: "EAF4FB").ignoresSafeArea()
-
-            VStack(spacing: 20) {
-                // Хедер
-                HStack {
-                    HStack(spacing: 12) {
-                        ZStack {
-                            Circle().fill(Color(hex: "5BAECC")).frame(width: 44, height: 44)
-                            Image(systemName: "speaker.wave.2.fill")
-                                .font(.system(size: 18)).foregroundColor(.white)
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Listen")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(Color(hex: "1C3F6E"))
-                            Text("Your sentence")
-                                .font(.system(size: 13))
-                                .foregroundColor(Color(hex: "6B8BAE"))
-                        }
-                    }
-                    Spacer()
-                    Button { dismiss() } label: {
-                        ZStack {
-                            Circle().fill(Color.white).frame(width: 34, height: 34)
-                                .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
-                            Image(systemName: "xmark")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(Color(hex: "6B8BAE"))
-                        }
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 24)
-
-                // Слова в модалке
-                ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.white.opacity(0.7))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 120)
-
-                    FlowLayout(spacing: 8) {
-                        ForEach(viewModel.selectedCards.indices, id: \.self) { idx in
-                            Text(viewModel.selectedCards[idx].word)
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(Color(hex: "1C3F6E"))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(Capsule().fill(Color(hex: "C5E8F5").opacity(0.7)))
-                        }
-                    }
-                    .padding(12)
-                }
-                .padding(.horizontal, 20)
-
-                // Speak Again
-                Button { viewModel.speakSentence() } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "speaker.wave.2.fill").font(.system(size: 16))
-                        Text("Speak Again").font(.system(size: 17, weight: .semibold))
-                    }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color(hex: "5BAECC"))
-                    )
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 20)
-            }
-        }
     }
 }
 
@@ -813,6 +742,14 @@ struct RecentCardTile: View {
     }
 }
 
-#Preview {
-    HomeView()
+private func detectManualLanguage(_ text: String) -> AppLanguage {
+    let kazakhSpecific = CharacterSet(charactersIn: "әғқңөұүһӘҒҚҢӨҰҮҺ")
+    for scalar in text.unicodeScalars {
+        if kazakhSpecific.contains(scalar) { return .kazakh }
+    }
+    for scalar in text.unicodeScalars {
+        let v = scalar.value
+        if v >= 0x0400 && v <= 0x04FF { return .russian }
+    }
+    return .english
 }

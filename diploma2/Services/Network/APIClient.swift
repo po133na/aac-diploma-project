@@ -36,7 +36,7 @@
 //    // При деплое заменить на реальный URL
 //    // Для симулятора: http://127.0.0.1:8000
 //    // Для реального устройства: http://YOUR_MAC_IP:8000
-//    private let baseURL = "http://192.168.1.195:8000"
+//    private let baseURL = "http://192.168.1.66:8000"
 //
 //    private var token: String? {
 //        get { UserDefaults.standard.string(forKey: "auth_token") }
@@ -174,7 +174,7 @@ final class APIClient {
     static let shared = APIClient()
     private init() {}
 
-    private let baseURL = "http://192.168.1.195:8000"
+    private let baseURL = "http://192.168.1.66:8000"
 
     private var token: String? {
         get { UserDefaults.standard.string(forKey: "auth_token") }

@@ -8,22 +8,16 @@ final class ProfileViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
-    @Published var ttsEnabled: Bool {
-        didSet { UserDefaults.standard.set(ttsEnabled, forKey: "tts_enabled") }
-    }
-    @Published var autoSpeak: Bool {
-        didSet { UserDefaults.standard.set(autoSpeak, forKey: "auto_speak") }
-    }
     @Published var largeText: Bool {
         didSet {
             UserDefaults.standard.set(largeText, forKey: "large_text")
             ThemeManager.shared.isLargeText = largeText
         }
     }
-    @Published var highContrast: Bool {
+    @Published var darkTheme: Bool {
         didSet {
-            UserDefaults.standard.set(highContrast, forKey: "high_contrast")
-            ThemeManager.shared.isHighContrast = highContrast
+            UserDefaults.standard.set(darkTheme, forKey: "high_contrast")
+            ThemeManager.shared.isHighContrast = darkTheme
         }
     }
 
@@ -31,14 +25,11 @@ final class ProfileViewModel: ObservableObject {
     private let authService  = AuthService()
 
     init() {
-        ttsEnabled   = UserDefaults.standard.object(forKey: "tts_enabled") as? Bool ?? true
-        autoSpeak    = UserDefaults.standard.bool(forKey: "auto_speak")
-        largeText    = UserDefaults.standard.bool(forKey: "large_text")
-        highContrast = UserDefaults.standard.bool(forKey: "high_contrast")
-        
-        // Синхронизируем с ThemeManager
-        ThemeManager.shared.isLargeText = largeText
-        ThemeManager.shared.isHighContrast = highContrast
+        largeText = UserDefaults.standard.bool(forKey: "large_text")
+        darkTheme = UserDefaults.standard.bool(forKey: "high_contrast")
+
+        ThemeManager.shared.isLargeText    = largeText
+        ThemeManager.shared.isHighContrast = darkTheme
     }
 
     func loadStats() async {
@@ -54,4 +45,3 @@ final class ProfileViewModel: ObservableObject {
     func updateProfile(username: String) async { /* TODO */ }
     func deleteAccount() async { /* TODO */ }
 }
-

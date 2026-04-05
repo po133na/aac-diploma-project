@@ -16,7 +16,6 @@ struct CardManagerView: View {
     @EnvironmentObject var homeViewModel: HomeViewModel
     @State private var showCreateCard     = false
     @State private var showCreateCategory = false
-    @State private var showCameraCard     = false
     var onDismissToHome: (() -> Void)? = nil
 
     var body: some View {
@@ -121,38 +120,6 @@ struct CardManagerView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 12)
 
-                    // ── Take Photo Card ──
-                    Button { showCameraCard = true } label: {
-                        HStack(spacing: 14) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color(hex: "34D399").opacity(0.2))
-                                    .frame(width: 42, height: 42)
-                                Image(systemName: "camera.fill")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(Color(hex: "34D399"))
-                            }
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("Take a Photo")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundColor(Color(hex: "1C3F6E"))
-                                Text("Use camera or photo library")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(Color(hex: "6B8BAE"))
-                            }
-                            Spacer()
-                        }
-                        .padding(16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color(hex: "EDFFF6"))
-                                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
-                        )
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
-
                     // ── Create New Category ──
                     Button { showCreateCategory = true } label: {
                         HStack(spacing: 14) {
@@ -190,10 +157,6 @@ struct CardManagerView: View {
         .navigationBarHidden(true)
         .task {
             await homeViewModel.loadRecentCards()
-        }
-        .sheet(isPresented: $showCameraCard) {
-            CameraCardFlow(onDismissToHome: onDismissToHome)
-                .environmentObject(homeViewModel)
         }
         .sheet(isPresented: $showCreateCard) {
             CreateCardFlow(onDismissToHome: onDismissToHome)
@@ -328,6 +291,8 @@ struct CreateCardFlow: View {
     @State private var isLoading = false
     @State private var errorMessage: String? = nil
     @State private var availableCategories: [Category] = []
+    @State private var showCamera = false
+    @State private var showLibrary = false
 
     // Прогресс: 5 реальных шага (success не считается)
     private var progress: Double {
@@ -379,9 +344,12 @@ struct CreateCardFlow: View {
                 // ── Контент ──
                 switch step {
                 case .imageSource:
-                    CardImageSourceStep(useAI: $useAI) {
-                        step = .describeImage
-                    }
+                    CardImageSourceStep(
+                        useAI: $useAI,
+                        onAI: { step = .describeImage },
+                        onCamera: { showCamera = true },
+                        onLibrary: { showLibrary = true }
+                    )
                 case .describeImage:
                     CardDescribeStep(
                         prompt: $imagePrompt,
@@ -427,6 +395,20 @@ struct CreateCardFlow: View {
             }
         }
         .presentationDragIndicator(.visible)
+        .sheet(isPresented: $showCamera) {
+            PhotoPickerView(sourceType: .camera) { img in
+                let base64 = img.jpegData(compressionQuality: 0.8).map { $0.base64EncodedString() } ?? ""
+                generatedImageBase64 = base64
+                step = .nameCard
+            }
+        }
+        .sheet(isPresented: $showLibrary) {
+            PhotoPickerView(sourceType: .photoLibrary) { img in
+                let base64 = img.jpegData(compressionQuality: 0.8).map { $0.base64EncodedString() } ?? ""
+                generatedImageBase64 = base64
+                step = .nameCard
+            }
+        }
         .task {
             do {
                 var loaded = try await CategoryService.shared.getCategories()
@@ -490,7 +472,9 @@ struct CreateCardFlow: View {
 
 private struct CardImageSourceStep: View {
     @Binding var useAI: Bool
-    let onNext: () -> Void
+    var onAI: () -> Void = {}
+    var onCamera: () -> Void = {}
+    var onLibrary: () -> Void = {}
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -525,20 +509,33 @@ private struct CardImageSourceStep: View {
                     borderColor: Color(hex: "D4C5F5")
                 ) {
                     useAI = true
-                    onNext()
+                    onAI()
                 }
 
-                // Camera / Gallery
+                // Camera
                 ImageSourceRow(
                     icon: "camera.fill",
+                    iconBg: Color(hex: "34D399"),
+                    iconFg: .white,
+                    title: "Take a Photo 📷",
+                    subtitle: "Use your camera",
+                    borderColor: Color(hex: "C5F5D8")
+                ) {
+                    useAI = false
+                    onCamera()
+                }
+
+                // Gallery
+                ImageSourceRow(
+                    icon: "photo.on.rectangle",
                     iconBg: Color(hex: "5BAECC"),
                     iconFg: .white,
-                    title: "Camera / Gallery 📷",
-                    subtitle: "Take a photo or choose existing",
+                    title: "Choose from Gallery 🖼️",
+                    subtitle: "Pick from your photo library",
                     borderColor: Color(hex: "C5E8F5")
                 ) {
                     useAI = false
-                    onNext()
+                    onLibrary()
                 }
 
                 Spacer()
@@ -908,6 +905,7 @@ private struct CardSaveStep: View {
     @State private var categoriesError: String? = nil
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var showCategoryPicker = false
     let onSave: () -> Void
 
     private var displayCategories: [Category] {
@@ -1008,32 +1006,52 @@ private struct CardSaveStep: View {
                                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "F87171"), lineWidth: 1))
                             )
                         } else {
-                            Picker("Category", selection: Binding(
-                                get: { selectedCategoryId ?? -1 },
-                                set: { newId in
-                                    selectedCategoryId = newId == -1 ? nil : newId
-                                    selectedCategoryName = displayCategories.first(where: { $0.id == newId })?.name ?? ""
+                            Button {
+                                showCategoryPicker = true
+                            } label: {
+                                HStack(spacing: 10) {
+                                    if let selId = selectedCategoryId,
+                                       let cat = displayCategories.first(where: { $0.id == selId }) {
+                                        Text(cat.icon ?? "📁")
+                                            .font(.system(size: 20))
+                                        Text(cat.name)
+                                            .font(.system(size: 15, weight: .medium))
+                                            .foregroundColor(Color(hex: "1C3F6E"))
+                                    } else {
+                                        Image(systemName: "square.grid.2x2")
+                                            .foregroundColor(Color(hex: "9BB8CC"))
+                                        Text("Select category")
+                                            .font(.system(size: 15))
+                                            .foregroundColor(Color(hex: "9BB8CC"))
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(Color(hex: "9BB8CC"))
                                 }
-                            )) {
-                                Text("Select category").tag(-1)
-                                ForEach(displayCategories) { category in
-                                    Text(category.name).tag(category.id)
-                                }
+                                .padding(14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .fill(Color.white)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 14)
+                                                .stroke(
+                                                    selectedCategoryId != nil ? Color(hex: "5BAECC") : Color(hex: "D0E5F0"),
+                                                    lineWidth: 1.5
+                                                )
+                                        )
+                                )
                             }
-                            .pickerStyle(.menu)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(14)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .fill(Color.white)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 14)
-                                            .stroke(
-                                                selectedCategoryId != nil ? Color(hex: "5BAECC") : Color(hex: "D0E5F0"),
-                                                lineWidth: 1.5
-                                            )
-                                    )
-                            )
+                            .buttonStyle(PlainButtonStyle())
+                            .sheet(isPresented: $showCategoryPicker) {
+                                CategoryPickerSheet(
+                                    categories: displayCategories,
+                                    selectedId: $selectedCategoryId,
+                                    selectedName: $selectedCategoryName
+                                )
+                                .presentationDetents([.medium, .large])
+                                .presentationDragIndicator(.visible)
+                            }
                         }
                     }
                     
@@ -1933,6 +1951,7 @@ struct CameraCardFlow: View {
     @State private var categories: [Category] = []
     @State private var isLoading = false
     @State private var errorMessage: String? = nil
+    @State private var showCategoryPicker = false
 
     enum CameraStep { case pickSource, nameCard, done }
 
@@ -2054,19 +2073,51 @@ struct CameraCardFlow: View {
                         Text("Category")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(Color(hex: "6B8BAE"))
-                        Picker("Category", selection: Binding(
-                            get: { selectedCategoryId ?? -1 },
-                            set: { selectedCategoryId = $0 == -1 ? nil : $0 }
-                        )) {
-                            Text("Select category").tag(-1)
-                            ForEach(categories) { cat in
-                                Text("\(cat.icon ?? "") \(cat.name)").tag(cat.id)
+                        Button {
+                            showCategoryPicker = true
+                        } label: {
+                            HStack(spacing: 10) {
+                                if let selId = selectedCategoryId,
+                                   let cat = categories.first(where: { $0.id == selId }) {
+                                    Text(cat.icon ?? "📁").font(.system(size: 20))
+                                    Text(cat.name)
+                                        .font(.system(size: 15, weight: .medium))
+                                        .foregroundColor(Color(hex: "1C3F6E"))
+                                } else {
+                                    Image(systemName: "square.grid.2x2")
+                                        .foregroundColor(Color(hex: "9BB8CC"))
+                                    Text("Select category")
+                                        .font(.system(size: 15))
+                                        .foregroundColor(Color(hex: "9BB8CC"))
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(Color(hex: "9BB8CC"))
                             }
+                            .padding(14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color.white)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .stroke(
+                                                selectedCategoryId != nil ? Color(hex: "5BAECC") : Color(hex: "D0E5F0"),
+                                                lineWidth: 1.5
+                                            )
+                                    )
+                            )
                         }
-                        .pickerStyle(.menu)
-                        .padding(14)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(RoundedRectangle(cornerRadius: 14).fill(Color.white))
+                        .buttonStyle(PlainButtonStyle())
+                        .sheet(isPresented: $showCategoryPicker) {
+                            CategoryPickerSheet(
+                                categories: categories,
+                                selectedId: $selectedCategoryId,
+                                selectedName: .constant("")
+                            )
+                            .presentationDetents([.medium, .large])
+                            .presentationDragIndicator(.visible)
+                        }
                     }
                     .padding(.horizontal, 20)
                 }
@@ -2136,6 +2187,71 @@ struct CameraCardFlow: View {
         for s in text.unicodeScalars { if kk.contains(s) { return "kk" } }
         for s in text.unicodeScalars { if s.value >= 0x0400 && s.value <= 0x04FF { return "ru" } }
         return "ru"
+    }
+}
+
+// MARK: - Category Picker Sheet
+
+struct CategoryPickerSheet: View {
+    let categories: [Category]
+    @Binding var selectedId: Int?
+    @Binding var selectedName: String
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color(hex: "EAF4FB").ignoresSafeArea()
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 8) {
+                        ForEach(categories) { cat in
+                            Button {
+                                selectedId = cat.id
+                                selectedName = cat.name
+                                dismiss()
+                            } label: {
+                                HStack(spacing: 14) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(Color(hex: "A8C8F0").opacity(0.4))
+                                            .frame(width: 44, height: 44)
+                                        Text(cat.icon ?? "📁")
+                                            .font(.system(size: 22))
+                                    }
+                                    Text(cat.name)
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(Color(hex: "1C3F6E"))
+                                    Spacer()
+                                    if selectedId == cat.id {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(Color(hex: "5BAECC"))
+                                            .font(.system(size: 20))
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(selectedId == cat.id ? Color(hex: "EAF4FB") : Color.white)
+                                        .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .padding(.horizontal, 16)
+                        }
+                    }
+                    .padding(.vertical, 12)
+                }
+            }
+            .navigationTitle("Select Category")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundColor(Color(hex: "5BAECC"))
+                }
+            }
+        }
     }
 }
 

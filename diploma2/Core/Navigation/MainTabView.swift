@@ -158,6 +158,6 @@ enum TabRoute: Hashable {
 #Preview {
     MainTabView()
         .environmentObject(AuthViewModel())
-        .environmentObject(ThemeManager())
-        .environmentObject(LocalizationManager())
+        .environmentObject(ThemeManager.shared)
+        .environmentObject(LocalizationManager.shared)
 }

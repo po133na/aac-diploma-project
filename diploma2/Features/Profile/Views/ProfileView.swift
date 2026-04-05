@@ -5,8 +5,8 @@ import SwiftUI
 struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var localization: LocalizationManager
     @StateObject private var viewModel = ProfileViewModel()
-
 
     @State private var showDeleteConfirm = false
     @State private var expandedSection: SettingsSection? = nil
@@ -15,50 +15,55 @@ struct ProfileView: View {
         NavigationStack{
             ZStack {
                 Color(hex: "D6EEF5").ignoresSafeArea()
-                
+
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
-                        
+
                         // ── Аватар + имя + email + Edit profile ──
                         ProfileHeaderSection()
                             .padding(.top, 28)
                             .padding(.bottom, 24)
-                        
+
                         // ── Activity Overview ──
-                        SectionHeader(icon: "chart.bar.fill", title: "ACTIVITY OVERVIEW")
+                        SectionHeader(icon: "chart.bar.fill", title: localization.activityOverview)
                             .padding(.horizontal, 20)
                             .padding(.bottom, 10)
-                        
+
                         ActivityCard(viewModel: viewModel)
                             .padding(.horizontal, 16)
                             .padding(.bottom, 24)
-                        
+
                         // ── Settings ──
-                        SectionHeader(icon: "gearshape.fill", title: "SETTINGS")
+                        SectionHeader(icon: "gearshape.fill", title: localization.settings)
                             .padding(.horizontal, 20)
                             .padding(.bottom, 10)
-                        
+
+                        // ── Language Picker ──
+                        LanguagePickerCard()
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 12)
+
                         SettingsAccordionCard(expandedSection: $expandedSection, viewModel: viewModel)
                             .padding(.horizontal, 16)
                             .padding(.bottom, 12)
-                        
+
                         // ── Log Out ──
                         ActionRow(
                             icon: "rectangle.portrait.and.arrow.right.fill",
                             iconBg: Color(hex: "5BAECC"),
-                            title: "Log Out",
+                            title: localization.logOut,
                             titleColor: Color(hex: "1C3F6E")
                         ) {
                             authViewModel.logout()
                         }
                         .padding(.horizontal, 16)
                         .padding(.bottom, 12)
-                        
+
                         // ── Delete Account ──
                         ActionRow(
                             icon: "trash.fill",
                             iconBg: Color(hex: "F87171"),
-                            title: "Delete Account",
+                            title: localization.deleteAccount,
                             titleColor: Color(hex: "F87171")
                         ) {
                             showDeleteConfirm = true
@@ -71,20 +76,20 @@ struct ProfileView: View {
         }
 
         .confirmationDialog(
-            "Delete Account",
+            localization.deleteAccount,
             isPresented: $showDeleteConfirm,
             titleVisibility: .visible
         ) {
-            Button("Delete", role: .destructive) {
+            Button(localization.t("Удалить", kk: "Жою", en: "Delete"), role: .destructive) {
                 // TODO: удаление аккаунта
             }
-            Button("Cancel", role: .cancel) {}
+            Button(localization.cancel, role: .cancel) {}
         } message: {
-            Text("This action cannot be undone.")
+            Text(localization.t("Это действие нельзя отменить.", kk: "Бұл әрекетті болдырмау мүмкін емес.", en: "This action cannot be undone."))
         }
-        .onAppear {                              // ← сюда, самым последним
-                Task { await viewModel.loadStats() }
-            }
+        .onAppear {
+            Task { await viewModel.loadStats() }
+        }
     }
 }
 
@@ -270,24 +275,71 @@ private struct ActivityCard: View {
     }
 }
 
+// MARK: - Language Picker Card
+
+private struct LanguagePickerCard: View {
+    @EnvironmentObject var localization: LocalizationManager
+
+    private let options: [(AppLanguage, String, String)] = [
+        (.russian,  "🇷🇺", "Русский"),
+        (.kazakh,   "🇰🇿", "Қазақша"),
+        (.english,  "🇬🇧", "English"),
+    ]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(options.enumerated()), id: \.offset) { idx, item in
+                let (lang, flag, name) = item
+                let isSelected = localization.currentLanguage == lang
+
+                Button {
+                    localization.currentLanguage = lang
+                } label: {
+                    HStack(spacing: 12) {
+                        Text(flag).font(.system(size: 22))
+                        Text(name)
+                            .font(.system(size: 15, weight: isSelected ? .semibold : .regular))
+                            .foregroundColor(Color(hex: "1C3F6E"))
+                        Spacer()
+                        if isSelected {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(Color(hex: "5BAECC"))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 13)
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                if idx < options.count - 1 {
+                    Divider().padding(.leading, 54)
+                }
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        )
+    }
+}
+
 // MARK: - Settings Accordion
 
 enum SettingsSection: Identifiable, CaseIterable {
-    case communication, accessibility, support
+    case accessibility, support
 
     var id: Self { self }
 
-    var title: String {
+    func localizedTitle(_ l: LocalizationManager) -> String {
         switch self {
-        case .communication: return "Communication"
-        case .accessibility:  return "Accessibility"
-        case .support:        return "Support & about"
+        case .accessibility: return l.accessibility
+        case .support:       return l.supportAbout
         }
     }
 
     var icon: String {
         switch self {
-        case .communication: return "message.fill"
         case .accessibility:  return "figure.roll"
         case .support:        return "questionmark.circle.fill"
         }
@@ -295,7 +347,6 @@ enum SettingsSection: Identifiable, CaseIterable {
 
     var iconBg: Color {
         switch self {
-        case .communication: return Color(hex: "B8CFF5")
         case .accessibility:  return Color(hex: "A8E8B0")
         case .support:        return Color(hex: "F5DEB0")
         }
@@ -340,6 +391,7 @@ private struct AccordionRow: View {
     let isExpanded: Bool
     let onTap: () -> Void
     @ObservedObject var viewModel: ProfileViewModel
+    @EnvironmentObject var localization: LocalizationManager
 
     var body: some View {
         VStack(spacing: 0) {
@@ -355,7 +407,7 @@ private struct AccordionRow: View {
                             .foregroundColor(Color(hex: "1C3F6E"))
                     }
 
-                    Text(section.title)
+                    Text(section.localizedTitle(localization))
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(Color(hex: "1C3F6E"))
 
@@ -390,8 +442,6 @@ private struct AccordionContent: View {
             Divider().padding(.horizontal, 16)
 
             switch section {
-            case .communication:
-                CommunicationSettings(viewModel: viewModel)
             case .accessibility:
                 AccessibilitySettings(viewModel: viewModel)
             case .support:
@@ -403,27 +453,15 @@ private struct AccordionContent: View {
 
 // MARK: - Accordion Content Views
 
-private struct CommunicationSettings: View {
-    @ObservedObject var viewModel: ProfileViewModel
-
-    var body: some View {
-        VStack(spacing: 0) {
-            ToggleRow(label: "Text-to-Speech", isOn: $viewModel.ttsEnabled)
-            Divider().padding(.leading, 16)
-            ToggleRow(label: "Auto speak on selection", isOn: $viewModel.autoSpeak)
-        }
-        .padding(.bottom, 4)
-    }
-}
-
 private struct AccessibilitySettings: View {
     @ObservedObject var viewModel: ProfileViewModel
+    @EnvironmentObject var localization: LocalizationManager
 
     var body: some View {
         VStack(spacing: 0) {
-            ToggleRow(label: "Large text", isOn: $viewModel.largeText)
+            ToggleRow(label: localization.largeText, isOn: $viewModel.largeText)
             Divider().padding(.leading, 16)
-            ToggleRow(label: "High contrast", isOn: $viewModel.highContrast)
+            ToggleRow(label: localization.darkTheme, isOn: $viewModel.darkTheme)
         }
         .padding(.bottom, 4)
     }
@@ -562,12 +600,7 @@ struct FullStatsView: View {
                     
                     // Top Cards
                     if let topCards = stats?.topCards, !topCards.isEmpty {
-                        StatsCard(
-                            title: "Most Used Cards",
-                            items: topCards.prefix(5).map { card in
-                                ("\(card.word)", "\(card.usageCount) uses")
-                            }
-                        )
+                        MostUsedCardsCard(topCards: Array(topCards.prefix(5)))
                     }
                     
                     // Top Phrases
@@ -636,6 +669,146 @@ struct StatsCard: View {
     }
 }
 
+// MARK: - Most Used Cards with hyperlink
+
+struct MostUsedCardsCard: View {
+    let topCards: [TopCard]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Most Used Cards")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(Color(hex: "1C3F6E"))
+                .padding(.horizontal, 20)
+
+            VStack(spacing: 0) {
+                ForEach(Array(topCards.enumerated()), id: \.element.id) { index, card in
+                    NavigationLink(destination: TopCardDetailView(card: card)) {
+                        HStack {
+                            if index == 0 {
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(Color(hex: "F5A623"))
+                            }
+                            Text(card.word)
+                                .font(.system(size: 14))
+                                .foregroundColor(Color(hex: "1C3F6E"))
+                            Spacer()
+                            Text("\(card.usageCount) uses")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(Color(hex: "5BAECC"))
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(hex: "9BB8CC"))
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+
+                    if index < topCards.count - 1 {
+                        Divider().padding(.leading, 16)
+                    }
+                }
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(Color.white)
+                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+            )
+            .padding(.horizontal, 16)
+        }
+    }
+}
+
+// MARK: - Top Card Detail View
+
+struct TopCardDetailView: View {
+    let card: TopCard
+    @State private var fullCard: Card? = nil
+    @State private var uiImage: UIImage? = nil
+    @State private var isLoading = true
+
+    var body: some View {
+        ZStack {
+            Color(hex: "D6EEF5").ignoresSafeArea()
+            VStack(spacing: 24) {
+                Spacer()
+                if isLoading {
+                    ProgressView()
+                } else {
+                    VStack(spacing: 16) {
+                        if let img = uiImage {
+                            Image(uiImage: img)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 200, height: 200)
+                                .cornerRadius(20)
+                                .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
+                        } else {
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(Color(hex: "C5D8F5"))
+                                .frame(width: 200, height: 200)
+                                .overlay(
+                                    Image(systemName: "photo")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(Color(hex: "9BB8CC"))
+                                )
+                        }
+
+                        Text(card.word)
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundColor(Color(hex: "1C3F6E"))
+
+                        HStack(spacing: 6) {
+                            Image(systemName: "hand.tap.fill")
+                                .foregroundColor(Color(hex: "5BAECC"))
+                            Text("Used \(card.usageCount) times")
+                                .font(.system(size: 16))
+                                .foregroundColor(Color(hex: "6B8BAE"))
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule().fill(Color.white)
+                                .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2)
+                        )
+
+                        Button {
+                            Task {
+                                await TTSService.shared.speak(text: card.word, language: .russian)
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "speaker.wave.2.fill")
+                                Text("Speak")
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 32)
+                            .padding(.vertical, 14)
+                            .background(Capsule().fill(Color(hex: "5BAECC")))
+                        }
+                    }
+                }
+                Spacer()
+            }
+        }
+        .navigationTitle("Card Detail")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if let fetched = try? await CardService.shared.getCard(id: card.id) {
+                fullCard = fetched
+                if !fetched.imageBase64.isEmpty,
+                   let data = Data(base64Encoded: fetched.imageBase64) {
+                    uiImage = UIImage(data: data)
+                }
+            }
+            isLoading = false
+        }
+    }
+}
+
 struct WeeklyChartView: View {
     let data: [Double]
     
@@ -684,5 +857,6 @@ struct WeeklyChartView: View {
 #Preview {
     ProfileView()
         .environmentObject(AuthViewModel())
-        .environmentObject(ThemeManager())
+        .environmentObject(ThemeManager.shared)
+        .environmentObject(LocalizationManager.shared)
 }

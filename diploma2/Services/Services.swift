@@ -185,11 +185,6 @@ final class TTSService: ObservableObject {
 
     // Основной метод — пробует API, fallback на AVFoundation
     func speak(text: String, language: AppLanguage) async {
-        // Проверяем, включен ли TTS
-        guard UserDefaults.standard.object(forKey: "tts_enabled") as? Bool ?? true else {
-            return
-        }
-        
         guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         isSpeaking = true
         defer { isSpeaking = false }
