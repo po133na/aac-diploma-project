@@ -4,10 +4,38 @@
 <dict>
 	<key>SchemeUserState</key>
 	<dict>
+		<key>AACWidgetExtension.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
 		<key>diploma2.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>0</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>F2179CC72F3DF0FB0083764D</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>F2179CD72F3DF0FD0083764D</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>F2179CE12F3DF0FD0083764D</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>F2D01E532F82EE9C00E1A2DE</key>
+		<dict>
+			<key>primary</key>
+			<true/>
 		</dict>
 	</dict>
 </dict>

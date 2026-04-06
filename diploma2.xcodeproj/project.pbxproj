@@ -11,6 +11,9 @@
 		F26858542F69D53200623C8D /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = F26858532F69D53200623C8D /* Kingfisher */; };
 		F26858572F69D68C00623C8D /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = F26858562F69D68C00623C8D /* Lottie */; };
 		F268585A2F69D6DA00623C8D /* SwiftKeychainWrapper in Frameworks */ = {isa = PBXBuildFile; productRef = F26858592F69D6DA00623C8D /* SwiftKeychainWrapper */; };
+		F2D01E572F82EE9C00E1A2DE /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F2D01E562F82EE9C00E1A2DE /* WidgetKit.framework */; };
+		F2D01E592F82EE9C00E1A2DE /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F2D01E582F82EE9C00E1A2DE /* SwiftUI.framework */; };
+		F2D01E6A2F82EE9E00E1A2DE /* AACWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F2D01E542F82EE9C00E1A2DE /* AACWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,12 +31,37 @@
 			remoteGlobalIDString = F2179CC72F3DF0FB0083764D;
 			remoteInfo = diploma2;
 		};
+		F2D01E682F82EE9E00E1A2DE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F2179CC02F3DF0FB0083764D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F2D01E532F82EE9C00E1A2DE;
+			remoteInfo = AACWidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		F2D01E6F2F82EE9E00E1A2DE /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				F2D01E6A2F82EE9E00E1A2DE /* AACWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		F2179CC82F3DF0FB0083764D /* diploma2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = diploma2.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F2179CD82F3DF0FD0083764D /* diploma2Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = diploma2Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F2179CE22F3DF0FD0083764D /* diploma2UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = diploma2UITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F2D01E542F82EE9C00E1A2DE /* AACWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AACWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		F2D01E562F82EE9C00E1A2DE /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		F2D01E582F82EE9C00E1A2DE /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		F2D01E722F841AC900E1A2DE /* AACWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AACWidgetExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -45,6 +73,20 @@
 			);
 			target = F2179CC72F3DF0FB0083764D /* diploma2 */;
 		};
+		F2D01E6E2F82EE9E00E1A2DE /* Exceptions for "AACWidget" folder in "AACWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = F2D01E532F82EE9C00E1A2DE /* AACWidgetExtension */;
+		};
+		F2D01E752F841B9000E1A2DE /* Exceptions for "diploma2" folder in "AACWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Services/WidgetDataManager.swift,
+			);
+			target = F2D01E532F82EE9C00E1A2DE /* AACWidgetExtension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -52,6 +94,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				F26858712F69EAB400623C8D /* Exceptions for "diploma2" folder in "diploma2" target */,
+				F2D01E752F841B9000E1A2DE /* Exceptions for "diploma2" folder in "AACWidgetExtension" target */,
 			);
 			path = diploma2;
 			sourceTree = "<group>";
@@ -64,6 +107,14 @@
 		F2179CE52F3DF0FD0083764D /* diploma2UITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = diploma2UITests;
+			sourceTree = "<group>";
+		};
+		F2D01E5A2F82EE9C00E1A2DE /* AACWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				F2D01E6E2F82EE9E00E1A2DE /* Exceptions for "AACWidget" folder in "AACWidgetExtension" target */,
+			);
+			path = AACWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -94,15 +145,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F2D01E512F82EE9C00E1A2DE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F2D01E592F82EE9C00E1A2DE /* SwiftUI.framework in Frameworks */,
+				F2D01E572F82EE9C00E1A2DE /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		F2179CBF2F3DF0FB0083764D = {
 			isa = PBXGroup;
 			children = (
+				F2D01E722F841AC900E1A2DE /* AACWidgetExtension.entitlements */,
 				F2179CCA2F3DF0FB0083764D /* diploma2 */,
 				F2179CDB2F3DF0FD0083764D /* diploma2Tests */,
 				F2179CE52F3DF0FD0083764D /* diploma2UITests */,
+				F2D01E5A2F82EE9C00E1A2DE /* AACWidget */,
+				F2D01E552F82EE9C00E1A2DE /* Frameworks */,
 				F2179CC92F3DF0FB0083764D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -113,8 +176,18 @@
 				F2179CC82F3DF0FB0083764D /* diploma2.app */,
 				F2179CD82F3DF0FD0083764D /* diploma2Tests.xctest */,
 				F2179CE22F3DF0FD0083764D /* diploma2UITests.xctest */,
+				F2D01E542F82EE9C00E1A2DE /* AACWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		F2D01E552F82EE9C00E1A2DE /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				F2D01E562F82EE9C00E1A2DE /* WidgetKit.framework */,
+				F2D01E582F82EE9C00E1A2DE /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -127,10 +200,12 @@
 				F2179CC42F3DF0FB0083764D /* Sources */,
 				F2179CC52F3DF0FB0083764D /* Frameworks */,
 				F2179CC62F3DF0FB0083764D /* Resources */,
+				F2D01E6F2F82EE9E00E1A2DE /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				F2D01E692F82EE9E00E1A2DE /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				F2179CCA2F3DF0FB0083764D /* diploma2 */,
@@ -192,6 +267,28 @@
 			productReference = F2179CE22F3DF0FD0083764D /* diploma2UITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		F2D01E532F82EE9C00E1A2DE /* AACWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F2D01E6B2F82EE9E00E1A2DE /* Build configuration list for PBXNativeTarget "AACWidgetExtension" */;
+			buildPhases = (
+				F2D01E502F82EE9C00E1A2DE /* Sources */,
+				F2D01E512F82EE9C00E1A2DE /* Frameworks */,
+				F2D01E522F82EE9C00E1A2DE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				F2D01E5A2F82EE9C00E1A2DE /* AACWidget */,
+			);
+			name = AACWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = AACWidgetExtension;
+			productReference = F2D01E542F82EE9C00E1A2DE /* AACWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -212,6 +309,9 @@
 					F2179CE12F3DF0FD0083764D = {
 						CreatedOnToolsVersion = 16.2;
 						TestTargetID = F2179CC72F3DF0FB0083764D;
+					};
+					F2D01E532F82EE9C00E1A2DE = {
+						CreatedOnToolsVersion = 16.2;
 					};
 				};
 			};
@@ -240,6 +340,7 @@
 				F2179CC72F3DF0FB0083764D /* diploma2 */,
 				F2179CD72F3DF0FD0083764D /* diploma2Tests */,
 				F2179CE12F3DF0FD0083764D /* diploma2UITests */,
+				F2D01E532F82EE9C00E1A2DE /* AACWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -260,6 +361,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F2179CE02F3DF0FD0083764D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F2D01E522F82EE9C00E1A2DE /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -290,6 +398,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F2D01E502F82EE9C00E1A2DE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -302,6 +417,11 @@
 			isa = PBXTargetDependency;
 			target = F2179CC72F3DF0FB0083764D /* diploma2 */;
 			targetProxy = F2179CE32F3DF0FD0083764D /* PBXContainerItemProxy */;
+		};
+		F2D01E692F82EE9E00E1A2DE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F2D01E532F82EE9C00E1A2DE /* AACWidgetExtension */;
+			targetProxy = F2D01E682F82EE9E00E1A2DE /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -430,6 +550,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = diploma2/diploma2.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"diploma2/Preview Content\"";
@@ -438,6 +559,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = diploma2/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Take a photo to create a communication card";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a photo from your library to create a communication card";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -461,6 +584,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = diploma2/diploma2.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"diploma2/Preview Content\"";
@@ -469,6 +593,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = diploma2/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Take a photo to create a communication card";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a photo from your library to create a communication card";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -559,6 +685,62 @@
 			};
 			name = Release;
 		};
+		F2D01E6C2F82EE9E00E1A2DE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = AACWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CUSRB2J8W9;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AACWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = AACWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bayanbayevasm.diploma2.AACWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		F2D01E6D2F82EE9E00E1A2DE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = AACWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CUSRB2J8W9;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AACWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = AACWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bayanbayevasm.diploma2.AACWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -594,6 +776,15 @@
 			buildConfigurations = (
 				F2179CF32F3DF0FD0083764D /* Debug */,
 				F2179CF42F3DF0FD0083764D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F2D01E6B2F82EE9E00E1A2DE /* Build configuration list for PBXNativeTarget "AACWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F2D01E6C2F82EE9E00E1A2DE /* Debug */,
+				F2D01E6D2F82EE9E00E1A2DE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -7,32 +7,30 @@
 import Foundation
 import WidgetKit
 
-struct WidgetCard: Codable {
+struct WidgetCard: Codable, Identifiable {
     let word: String
     let usageCount: Int
+    var id: String { word }
 }
 
 final class WidgetDataManager {
     static let shared = WidgetDataManager()
     private init() {}
 
-    private let appGroupID = "group.com.diploma2.aac"
+    private let appGroupID = "group.com.bayanbayevasm.diploma2"
     private let key = "widget_top_cards"
 
     private var defaults: UserDefaults? {
         UserDefaults(suiteName: appGroupID)
     }
 
-    /// Вызывать после загрузки статистики (ProfileViewModel.loadStats)
-    func save(topCards: [TopCard]) {
-        let items = topCards.prefix(6).map { WidgetCard(word: $0.word, usageCount: $0.usageCount) }
-        if let data = try? JSONEncoder().encode(items) {
+    func save(cards: [WidgetCard]) {
+        if let data = try? JSONEncoder().encode(Array(cards.prefix(6))) {
             defaults?.set(data, forKey: key)
         }
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    /// Вызывается из виджета
     func load() -> [WidgetCard] {
         guard
             let data = defaults?.data(forKey: key),

@@ -37,7 +37,8 @@ final class ProfileViewModel: ObservableObject {
         defer { isLoading = false }
         if let loaded = try? await statsService.getStats() {
             stats = loaded
-            WidgetDataManager.shared.save(topCards: loaded.topCards)
+            let widgetCards = loaded.topCards.map { WidgetCard(word: $0.word, usageCount: $0.usageCount) }
+            WidgetDataManager.shared.save(cards: widgetCards)
         }
     }
 

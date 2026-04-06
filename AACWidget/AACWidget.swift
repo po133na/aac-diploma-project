@@ -8,17 +8,9 @@
 import WidgetKit
 import SwiftUI
 
-// MARK: - Shared card model (зеркало WidgetCard из WidgetDataManager)
-
-private struct WidgetCard: Codable, Identifiable {
-    let word: String
-    let usageCount: Int
-    var id: String { word }
-}
-
 private func loadCards() -> [WidgetCard] {
     guard
-        let defaults = UserDefaults(suiteName: "group.com.diploma2.aac"),
+        let defaults = UserDefaults(suiteName: "group.com.bayanbayevasm.diploma2"),
         let data = defaults.data(forKey: "widget_top_cards"),
         let items = try? JSONDecoder().decode([WidgetCard].self, from: data)
     else { return [] }
