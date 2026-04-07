@@ -176,7 +176,7 @@ final class APIClient {
 
     // Симулятор: http://localhost:8000
     // Реальное устройство: http://<IP_МАКА>:8000  (узнать: ipconfig getifaddr en0)
-    private let baseURL = "http://192.168.1.66:8000"
+    private let baseURL = "http://138.199.162.112:8000"
 
     private var token: String? {
         get { UserDefaults.standard.string(forKey: "auth_token") }
