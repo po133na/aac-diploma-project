@@ -24,7 +24,7 @@ from app.schemas import (
     SyncResponse, DeletedItemResponse
 )
 from app.database import init_db, get_session
-from app.models import User, Category, Card, Phrase, PasswordResetToken, UserSettings, DailyUsage, DeletedItem
+from app.models import User, Category, Card, Phrase, PasswordResetToken, UserSettings, DailyUsage, DeletedItem, UserCardUsage
 from app.translation import translate_to_english
 from app.auth import (
     get_password_hash, verify_password, create_access_token, get_current_user
@@ -272,23 +272,46 @@ async def get_statistics(
     """Статистика пользователя"""
     uid = current_user.id
 
-    total_cards, total_card_uses = (await session.execute(
+    total_cards, user_card_uses = (await session.execute(
         select(func.count(Card.id), func.coalesce(func.sum(Card.usage_count), 0))
         .where(Card.user_id == uid)
     )).one()
+
+    system_card_uses = (await session.execute(
+        select(func.coalesce(func.sum(UserCardUsage.usage_count), 0))
+        .where(UserCardUsage.user_id == uid)
+    )).scalar()
+
+    total_card_uses = user_card_uses + system_card_uses
 
     total_phrases, total_phrase_uses = (await session.execute(
         select(func.count(Phrase.id), func.coalesce(func.sum(Phrase.usage_count), 0))
         .where(Phrase.user_id == uid)
     )).one()
 
-    top_cards_rows = (await session.execute(
+    # Топ пользовательских карточек
+    user_top_rows = (await session.execute(
         select(Card.id, Card.word, Card.usage_count)
         .where(Card.user_id == uid)
         .order_by(Card.usage_count.desc())
         .limit(5)
     )).all()
-    top_cards = [{"id": r[0], "word": r[1], "usage_count": r[2]} for r in top_cards_rows]
+
+    # Топ системных карточек для этого пользователя
+    system_top_rows = (await session.execute(
+        select(Card.id, Card.word, UserCardUsage.usage_count)
+        .join(UserCardUsage, UserCardUsage.card_id == Card.id)
+        .where(UserCardUsage.user_id == uid)
+        .order_by(UserCardUsage.usage_count.desc())
+        .limit(5)
+    )).all()
+
+    all_top = sorted(
+        [{"id": r[0], "word": r[1], "usage_count": r[2]} for r in user_top_rows + system_top_rows],
+        key=lambda x: x["usage_count"],
+        reverse=True
+    )[:5]
+    top_cards = all_top
 
     top_phrases_rows = (await session.execute(
         select(Phrase.id, Phrase.name, Phrase.usage_count)
@@ -836,9 +859,22 @@ async def use_card(
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
 
-    # Увеличиваем счётчик только для пользовательских карточек
     if card.user_id is not None:
+        # Пользовательская карточка — обновляем счётчик напрямую
         card.usage_count += 1
+    else:
+        # Системная карточка — трекаем использование per-user
+        usage_result = await session.execute(
+            select(UserCardUsage).where(
+                UserCardUsage.user_id == current_user.id,
+                UserCardUsage.card_id == card_id
+            )
+        )
+        user_card_usage = usage_result.scalar_one_or_none()
+        if user_card_usage:
+            user_card_usage.usage_count += 1
+        else:
+            session.add(UserCardUsage(user_id=current_user.id, card_id=card_id, usage_count=1))
 
     # Трекаем ежедневное использование
     today = date.today()

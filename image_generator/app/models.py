@@ -109,6 +109,19 @@ class DailyUsage(Base):
     owner = relationship("User")
 
 
+class UserCardUsage(Base):
+    """Трекинг использования системных карточек конкретным пользователем"""
+    __tablename__ = "user_card_usage"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    card_id = Column(Integer, ForeignKey("cards.id"), nullable=False)
+    usage_count = Column(Integer, default=1)
+
+    user = relationship("User")
+    card = relationship("Card")
+
+
 class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"
 
