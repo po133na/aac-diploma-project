@@ -24,7 +24,7 @@ from app.schemas import (
     SyncResponse, DeletedItemResponse
 )
 from app.database import init_db, get_session
-from app.models import User, Category, Card, Phrase, PasswordResetToken, UserSettings, DailyUsage, DeletedItem, UserCardUsage
+from app.models import User, Category, Card, Phrase, PasswordResetToken, UserSettings, DailyUsage, DeletedItem, UserCardUsage, DailyCardLog
 from app.translation import translate_to_english
 from app.auth import (
     get_password_hash, verify_password, create_access_token, get_current_user
@@ -876,19 +876,29 @@ async def use_card(
         else:
             session.add(UserCardUsage(user_id=current_user.id, card_id=card_id, usage_count=1))
 
-    # Трекаем ежедневное использование
+    # Трекаем ежедневное использование — только уникальные карточки в день
     today = date.today()
-    daily_result = await session.execute(
-        select(DailyUsage).where(
-            DailyUsage.user_id == current_user.id,
-            DailyUsage.date == today
+    already_used_today = (await session.execute(
+        select(DailyCardLog).where(
+            DailyCardLog.user_id == current_user.id,
+            DailyCardLog.date == today,
+            DailyCardLog.card_id == card_id
         )
-    )
-    daily = daily_result.scalar_one_or_none()
-    if daily:
-        daily.cards_used += 1
-    else:
-        session.add(DailyUsage(user_id=current_user.id, date=today, cards_used=1))
+    )).scalar_one_or_none()
+
+    if not already_used_today:
+        session.add(DailyCardLog(user_id=current_user.id, date=today, card_id=card_id))
+        daily_result = await session.execute(
+            select(DailyUsage).where(
+                DailyUsage.user_id == current_user.id,
+                DailyUsage.date == today
+            )
+        )
+        daily = daily_result.scalar_one_or_none()
+        if daily:
+            daily.cards_used += 1
+        else:
+            session.add(DailyUsage(user_id=current_user.id, date=today, cards_used=1))
 
     await session.commit()
     await session.refresh(card)

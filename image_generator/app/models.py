@@ -109,6 +109,18 @@ class DailyUsage(Base):
     owner = relationship("User")
 
 
+class DailyCardLog(Base):
+    """Лог уникальных карточек за день — чтобы считать карточки, а не тапы"""
+    __tablename__ = "daily_card_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    date = Column(Date, nullable=False)
+    card_id = Column(Integer, ForeignKey("cards.id"), nullable=False)
+
+    user = relationship("User")
+
+
 class UserCardUsage(Base):
     """Трекинг использования системных карточек конкретным пользователем"""
     __tablename__ = "user_card_usage"
