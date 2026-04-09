@@ -89,97 +89,73 @@ def _make_card_image(color: tuple) -> str:
 
 async def create_default_categories(session: AsyncSession):
     """Создаёт стандартные категории и системные карточки Basics если их нет"""
-    result = await session.execute(select(Category).where(Category.user_id == None))
-    categories_exist = result.first() is not None
-
-    if not categories_exist:
-        default_categories = [
-            {"name": "Основы", "name_kk": "Негіздер", "name_en": "Basics", "icon": "✨"},
-            {"name": "Еда", "name_kk": "Тамақ", "name_en": "Food", "icon": "🍎"},
-            {"name": "Животные", "name_kk": "Жануарлар", "name_en": "Animals", "icon": "🐱"},
-            {"name": "Действия", "name_kk": "Әрекеттер", "name_en": "Actions", "icon": "🏃"},
-            {"name": "Эмоции", "name_kk": "Эмоциялар", "name_en": "Emotions", "icon": "😊"},
-            {"name": "Семья", "name_kk": "Отбасы", "name_en": "Family", "icon": "👨‍👩‍👧"},
-            {"name": "Места", "name_kk": "Орындар", "name_en": "Places", "icon": "🏠"},
-            {"name": "Предметы", "name_kk": "Заттар", "name_en": "Objects", "icon": "📦"},
-            {"name": "Цвета", "name_kk": "Түстер", "name_en": "Colors", "icon": "🎨"},
-        ]
-        basics_category = None
-        for cat_data in default_categories:
-            category = Category(**cat_data)
-            session.add(category)
+    default_categories = [
+        {"name": "Основы", "name_kk": "Негіздер", "name_en": "Basics", "icon": "✨"},
+        {"name": "Еда", "name_kk": "Тамақ", "name_en": "Food", "icon": "🍎"},
+        {"name": "Животные", "name_kk": "Жануарлар", "name_en": "Animals", "icon": "🐱"},
+        {"name": "Действия", "name_kk": "Әрекеттер", "name_en": "Actions", "icon": "🏃"},
+        {"name": "Эмоции", "name_kk": "Эмоциялар", "name_en": "Emotions", "icon": "😊"},
+        {"name": "Семья", "name_kk": "Отбасы", "name_en": "Family", "icon": "👨‍👩‍👧"},
+        {"name": "Места", "name_kk": "Орындар", "name_en": "Places", "icon": "🏠"},
+        {"name": "Предметы", "name_kk": "Заттар", "name_en": "Objects", "icon": "📦"},
+        {"name": "Цвета", "name_kk": "Түстер", "name_en": "Colors", "icon": "🎨"},
+    ]
+    basics_category = None
+    for cat_data in default_categories:
+        existing = (await session.execute(
+            select(Category).where(Category.name_en == cat_data["name_en"], Category.user_id == None)
+        )).scalar_one_or_none()
+        if existing:
             if cat_data["name_en"] == "Basics":
-                basics_category = category
+                basics_category = existing
+            continue
+        category = Category(**cat_data)
+        session.add(category)
+        if cat_data["name_en"] == "Basics":
+            basics_category = category
 
-        await session.flush()  # получаем ID категорий
+    await session.flush()  # получаем ID категорий
 
-        # Предзагружаем карточки для Basics (системные, user_id=None)
-        basics_words = [
-            ("I", (173, 216, 230)),
-            ("You", (144, 238, 144)),
-            ("Want", (255, 255, 153)),
-            ("Need", (255, 200, 150)),
-            ("Help", (255, 182, 193)),
-            ("Yes", (144, 238, 144)),
-            ("No", (255, 160, 160)),
-            ("Please", (200, 160, 220)),
-            ("Listen", (160, 220, 220)),
-            ("Eat", (255, 255, 153)),
-            ("Drink", (173, 216, 230)),
-            ("Play", (144, 238, 144)),
-            ("Sleep", (200, 160, 220)),
-            ("Go", (255, 200, 150)),
-            ("Read", (173, 216, 230)),
-            ("Watch", (144, 238, 144)),
-            ("Draw", (255, 182, 193)),
-            ("Sing", (255, 255, 153)),
-            ("Dance", (255, 200, 150)),
-            ("Jump", (160, 220, 220)),
-        ]
-        for word, color in basics_words:
-            card = Card(
-                word=word,
-                language="en",
-                translated_word=word,
-                image_base64=_make_card_image(color),
-                category_id=basics_category.id,
-                user_id=None,
-            )
-            session.add(card)
+    # Предзагружаем карточки для Basics если их ещё нет
+    if basics_category is not None:
+        basics_cards_exist = (await session.execute(
+            select(Card).where(Card.category_id == basics_category.id, Card.user_id == None).limit(1)
+        )).scalar_one_or_none()
 
-        await session.commit()
-
-    else:
-        # Категории уже есть — проверяем отдельно наличие Basics
-        basics_result = await session.execute(
-            select(Category).where(Category.name_en == "Basics", Category.user_id == None)
-        )
-        if basics_result.scalars().first() is None:
-            basics_category = Category(
-                name="Основы", name_kk="Негіздер", name_en="Basics", icon="✨"
-            )
-            session.add(basics_category)
-            await session.flush()
-
+        if not basics_cards_exist:
             basics_words = [
-                ("I", (173, 216, 230)), ("You", (144, 238, 144)),
-                ("Want", (255, 255, 153)), ("Need", (255, 200, 150)),
-                ("Help", (255, 182, 193)), ("Yes", (144, 238, 144)),
-                ("No", (255, 160, 160)), ("Please", (200, 160, 220)),
-                ("Listen", (160, 220, 220)), ("Eat", (255, 255, 153)),
-                ("Drink", (173, 216, 230)), ("Play", (144, 238, 144)),
-                ("Sleep", (200, 160, 220)), ("Go", (255, 200, 150)),
-                ("Read", (173, 216, 230)), ("Watch", (144, 238, 144)),
-                ("Draw", (255, 182, 193)), ("Sing", (255, 255, 153)),
-                ("Dance", (255, 200, 150)), ("Jump", (160, 220, 220)),
+                ("I", (173, 216, 230)),
+                ("You", (144, 238, 144)),
+                ("Want", (255, 255, 153)),
+                ("Need", (255, 200, 150)),
+                ("Help", (255, 182, 193)),
+                ("Yes", (144, 238, 144)),
+                ("No", (255, 160, 160)),
+                ("Please", (200, 160, 220)),
+                ("Listen", (160, 220, 220)),
+                ("Eat", (255, 255, 153)),
+                ("Drink", (173, 216, 230)),
+                ("Play", (144, 238, 144)),
+                ("Sleep", (200, 160, 220)),
+                ("Go", (255, 200, 150)),
+                ("Read", (173, 216, 230)),
+                ("Watch", (144, 238, 144)),
+                ("Draw", (255, 182, 193)),
+                ("Sing", (255, 255, 153)),
+                ("Dance", (255, 200, 150)),
+                ("Jump", (160, 220, 220)),
             ]
             for word, color in basics_words:
                 session.add(Card(
-                    word=word, language="en", translated_word=word,
+                    word=word,
+                    language="en",
+                    translated_word=word,
                     image_base64=_make_card_image(color),
-                    category_id=basics_category.id, user_id=None,
+                    category_id=basics_category.id,
+                    user_id=None,
                 ))
-            await session.commit()
+
+    await session.commit()
 
 
 @app.get("/")
@@ -272,16 +248,17 @@ async def get_statistics(
     """Статистика пользователя"""
     uid = current_user.id
 
-    total_cards, user_card_uses = (await session.execute(
+    user_cards_count, user_card_uses = (await session.execute(
         select(func.count(Card.id), func.coalesce(func.sum(Card.usage_count), 0))
         .where(Card.user_id == uid)
     )).one()
 
-    system_card_uses = (await session.execute(
-        select(func.coalesce(func.sum(UserCardUsage.usage_count), 0))
+    system_cards_count, system_card_uses = (await session.execute(
+        select(func.count(UserCardUsage.id), func.coalesce(func.sum(UserCardUsage.usage_count), 0))
         .where(UserCardUsage.user_id == uid)
-    )).scalar()
+    )).one()
 
+    total_cards = user_cards_count + system_cards_count
     total_card_uses = user_card_uses + system_card_uses
 
     total_phrases, total_phrase_uses = (await session.execute(
