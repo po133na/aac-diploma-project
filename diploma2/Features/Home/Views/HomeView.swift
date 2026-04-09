@@ -4,7 +4,7 @@ import SwiftUI
 // MARK: - Home View
 
 struct HomeView: View {
-    @StateObject private var viewModel = HomeViewModel()
+    @EnvironmentObject private var viewModel: HomeViewModel
 
     var body: some View {
         ZStack {
@@ -34,11 +34,11 @@ struct HomeView: View {
 }
 
 // MARK: - Sentence Builder Bar
-
 struct SentenceBuilderBar: View {
     @ObservedObject var viewModel: HomeViewModel
     @EnvironmentObject var localization: LocalizationManager
     @FocusState private var isTyping: Bool
+    @State private var showSpeakSheet = false
 
     private var isEmpty: Bool {
         viewModel.tokens.isEmpty &&
@@ -47,18 +47,14 @@ struct SentenceBuilderBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-
-            // ── Верхняя строка: аватар + заголовок + Clear + Speak ──
+            // ── Верхняя строка ──
             HStack(spacing: 10) {
                 ZStack {
                     Circle()
                         .fill(Color(hex: "F5D6EC"))
                         .frame(width: 40, height: 40)
-                    Image(systemName: "bubble.left.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(Color(hex: "C97AB2"))
+                    Text("💭").font(.system(size: 20))
                 }
-
                 VStack(alignment: .leading, spacing: 2) {
                     Text(localization.t("Моё предложение", kk: "Менің сөйлемім", en: "My Sentence"))
                         .font(.system(size: 16, weight: .bold))
@@ -71,28 +67,22 @@ struct SentenceBuilderBar: View {
                     .font(.system(size: 12))
                     .foregroundColor(Color(hex: "6B8BAE"))
                 }
-
                 Spacer()
-
-                if !isEmpty {
-                    Button { viewModel.clearSentence() } label: {
-                        Text(localization.t("Очистить", kk: "Тазалау", en: "Clear"))
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(Color(hex: "6B8BAE"))
-                    }
-                    .transition(.opacity)
+                Button { viewModel.clearSentence() } label: {
+                    Text(localization.t("Очистить", kk: "Тазалау", en: "Clear"))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(Color(hex: "9BB8CC"))
                 }
-
-                Button { viewModel.speakSentence() } label: {
-                    HStack(spacing: 6) {
+                Button { showSpeakSheet = true } label: {
+                    HStack(spacing: 5) {
                         Image(systemName: "speaker.wave.2.fill")
-                            .font(.system(size: 14))
+                            .font(.system(size: 13))
                         Text(localization.t("Говорить", kk: "Айту", en: "Speak"))
-                            .font(.system(size: 15, weight: .bold))
+                            .font(.system(size: 14, weight: .bold))
                     }
                     .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
                     .background(Capsule().fill(isEmpty ? Color(hex: "9BB8CC") : Color(hex: "5BAECC")))
                 }
                 .disabled(isEmpty)
@@ -102,28 +92,18 @@ struct SentenceBuilderBar: View {
             .padding(.bottom, 10)
             .animation(.easeInOut(duration: 0.15), value: isEmpty)
 
-            // ── Единая строка: токены по порядку + поле ввода ──
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    // Токены в порядке добавления
+            // ── Поле с токенами (FlowLayout, переносы) ──
+            ScrollView(.vertical, showsIndicators: false) {
+                FlowLayout(spacing: 8) {
                     ForEach(viewModel.tokens) { token in
-                        if token.isCard {
-                            // Слово из карточки — с обводкой
-                            WordChip(word: token.word) {
-                                viewModel.removeToken(token)
-                            }
-                        } else {
-                            // Зафиксированный текст — без обводки
-                            Text(token.word)
-                                .font(.system(size: 15))
-                                .foregroundColor(Color(hex: "1C3F6E"))
+                        WordChip(word: token.word) {
+                            viewModel.removeToken(token)
                         }
                     }
-
-                    // Поле для текущего ввода
+                    // Inline TextField после токенов
                     TextField(
                         isEmpty
-                            ? localization.t("Нажми на карточку или напиши...", kk: "Картаны басыңыз немесе жазыңыз...", en: "Tap a card or type here...")
+                            ? localization.t("Нажми на карточку или напиши...", kk: "Картаны басыңыз...", en: "Tap a card or type here...")
                             : localization.t("ещё слово...", kk: "тағы сөз...", en: "add word..."),
                         text: $viewModel.typedText
                     )
@@ -132,12 +112,12 @@ struct SentenceBuilderBar: View {
                     .focused($isTyping)
                     .submitLabel(.done)
                     .onSubmit { isTyping = false }
-                    .frame(minWidth: 140)
+                    .frame(minWidth: 140, minHeight: 32)
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
             }
-            .frame(height: 48)
+            .frame(minHeight: 72, maxHeight: 96)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(Color.white)
@@ -149,9 +129,156 @@ struct SentenceBuilderBar: View {
             .onTapGesture { isTyping = true }
         }
         .background(Color(hex: "D6EEF8").opacity(0.55))
+        .sheet(isPresented: $showSpeakSheet) {
+            ListenModalView(viewModel: viewModel)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
     }
 }
+// MARK: - Listen Modal
+struct ListenModalView: View {
+    @ObservedObject var viewModel: HomeViewModel
+    @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var localization: LocalizationManager
+    @State private var manualText: String = ""
+    @FocusState private var isManualFocused: Bool
 
+    private var allWords: [String] {
+        var words = viewModel.tokens.map { $0.word }
+        let typed = viewModel.typedText.trimmingCharacters(in: .whitespaces)
+        if !typed.isEmpty { words.append(typed) }
+        return words
+    }
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Color(hex: "D6EEF8").ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 16) {
+
+                // ── Заголовок ──
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color(hex: "5BAECC"))
+                            .frame(width: 52, height: 52)
+                        Image(systemName: "speaker.wave.2.fill")
+                            .font(.system(size: 22))
+                            .foregroundColor(.white)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(localization.t("Слушать", kk: "Тыңдау", en: "Listen"))
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(Color(hex: "1C3F6E"))
+                        Text(localization.t("Ваше предложение", kk: "Сіздің сөйлеміңіз", en: "Your sentence"))
+                            .font(.system(size: 14))
+                            .foregroundColor(Color(hex: "6B8BAE"))
+                    }
+                    Spacer()
+                }
+                .padding(.top, 20)
+                .padding(.horizontal, 20)
+
+                // ── Белый блок с токенами + текстовый ввод ──
+                VStack(alignment: .leading, spacing: 12) {
+                    if !allWords.isEmpty {
+                        FlowLayout(spacing: 8) {
+                            ForEach(allWords, id: \.self) { word in
+                                Text(word)
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(Color(hex: "1C3F6E"))
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color(hex: "EAF6FB"))
+                                    )
+                            }
+                        }
+                    }
+
+                    // Поле ручного ввода внутри белого блока
+                    HStack(spacing: 8) {
+                        TextField(
+                            localization.t("Напишите свой текст...", kk: "Мәтін жазыңыз...", en: "Type your own text..."),
+                            text: $manualText
+                        )
+                        .font(.system(size: 15))
+                        .foregroundColor(Color(hex: "1C3F6E"))
+                        .focused($isManualFocused)
+                        .submitLabel(.done)
+                        .onSubmit { speakManual() }
+
+                        if !manualText.trimmingCharacters(in: .whitespaces).isEmpty {
+                            Button { speakManual() } label: {
+                                Image(systemName: "speaker.wave.2.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.white)
+                                    .frame(width: 32, height: 32)
+                                    .background(Circle().fill(Color(hex: "5BAECC")))
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                }
+                .frame(maxWidth: .infinity, minHeight: 180, alignment: .topLeading)
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color.white)
+                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+                )
+                .padding(.horizontal, 16)
+
+                Spacer()
+
+                // ── Кнопка Speak Again ──
+                Button {
+                    viewModel.speakSentence()
+                } label: {
+                    Text(localization.t("Говорить снова", kk: "Қайта айту", en: "Speak Again"))
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(Color(hex: "5BAECC"))
+                        )
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 30)
+            }
+
+            // ── Кнопка закрытия ──
+            Button { dismiss() } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 36, height: 36)
+                        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(Color(hex: "6B8BAE"))
+                }
+            }
+            .padding(.top, 16)
+            .padding(.trailing, 16)
+        }
+        .onAppear { viewModel.speakSentence() }
+    }
+
+    private func speakManual() {
+        let text = manualText.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+        isManualFocused = false
+        Task {
+            let lang = detectManualLanguage(text)
+            await TTSService.shared.speak(text: text, language: lang)
+        }
+    }
+}
 // MARK: - Word Chip (слово из карточки — с обводкой)
 
 struct WordChip: View {
@@ -301,6 +428,13 @@ struct RealCategoryRow: View {
     let category: Category
     let onTap: () -> Void
 
+    private var coverImage: UIImage? {
+        guard let base64 = category.coverImageBase64,
+              !base64.isEmpty,
+              let data = Data(base64Encoded: base64) else { return nil }
+        return UIImage(data: data)
+    }
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 14) {
@@ -308,8 +442,16 @@ struct RealCategoryRow: View {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(Color(hex: "A8C8F0"))
                         .frame(width: 54, height: 54)
-                    Text(category.icon ?? "📁")
-                        .font(.system(size: 26))
+                    if let img = coverImage {
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 54, height: 54)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    } else {
+                        Text(category.icon ?? "📁")
+                            .font(.system(size: 26))
+                    }
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     Text(category.name)

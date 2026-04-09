@@ -17,6 +17,7 @@ struct CardManagerView: View {
     @State private var showCreateCard     = false
     @State private var showCreateCategory = false
     var onDismissToHome: (() -> Void)? = nil
+    var onViewCategory: ((Category) -> Void)? = nil
 
     var body: some View {
         ZStack {
@@ -163,7 +164,7 @@ struct CardManagerView: View {
                 .environmentObject(homeViewModel)
         }
         .sheet(isPresented: $showCreateCategory) {
-            CreateCategoryFlow(onDismissToHome: onDismissToHome)
+            CreateCategoryFlow(onDismissToHome: onDismissToHome, onViewCategory: onViewCategory)
                 .environmentObject(homeViewModel)
         }
     }
@@ -382,7 +383,7 @@ struct CreateCardFlow: View {
                         step = .success
                     }
                 case .success:
-                    CardSuccessScreen(cardName: cardName, categoryName: selectedCategoryName) {
+                    CardSuccessScreen(cardName: cardName, categoryName: selectedCategoryName, imageBase64: generatedImageBase64) {
                         step = .imageSource
                         imagePrompt = ""
                         cardName = ""
@@ -1074,9 +1075,6 @@ private struct CardSaveStep: View {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             .scaleEffect(0.8)
-                    } else {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 14, weight: .bold))
                     }
                     Text(isLoading ? "Saving..." : "Save Card →")
                         .font(.system(size: 17, weight: .semibold))
@@ -1194,8 +1192,15 @@ private struct CardSaveStep: View {
 private struct CardSuccessScreen: View {
     let cardName: String
     let categoryName: String
+    let imageBase64: String?
     let onCreateAnother: () -> Void
     let onGoToBoard: () -> Void
+
+    private var uiImage: UIImage? {
+        guard let base64 = imageBase64,
+              let data = Data(base64Encoded: base64) else { return nil }
+        return UIImage(data: data)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1222,9 +1227,17 @@ private struct CardSuccessScreen: View {
 
                 // Превью сохранённой карточки
                 HStack(spacing: 12) {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(hex: "C5D8F5"))
-                        .frame(width: 48, height: 48)
+                    if let img = uiImage {
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 56, height: 56)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    } else {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(hex: "C5D8F5"))
+                            .frame(width: 56, height: 56)
+                    }
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(cardName.isEmpty ? "music" : cardName)
@@ -1300,12 +1313,14 @@ struct CreateCategoryFlow: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var homeViewModel: HomeViewModel
     var onDismissToHome: (() -> Void)? = nil
+    var onViewCategory: ((Category) -> Void)? = nil
     @State private var step: CreateCategoryStep = .nameCategory
     @State private var categoryName = ""
     @State private var selectedCardIds: Set<Int> = []
     @State private var coverCardId: Int? = nil
     @State private var unassignedCards: [Card] = []
     @State private var createdCardCount = 0
+    @State private var createdCategory: Category? = nil
 
     private var progress: Double {
         switch step {
@@ -1358,19 +1373,25 @@ struct CreateCategoryFlow: View {
                         categoryName: categoryName,
                         selectedCardIds: selectedCardIds,
                         coverCard: unassignedCards.first(where: { $0.id == coverCardId })
-                    ) { count in
+                    ) { count, category in
                         createdCardCount = count
+                        createdCategory = category
                         step = .success
                     }
                 case .success:
-                    CategorySuccessScreen(categoryName: categoryName, cardCount: createdCardCount) {
+                    CategorySuccessScreen(categoryName: categoryName, cardCount: createdCardCount, coverCard: unassignedCards.first(where: { $0.id == coverCardId })) {
                         step = .nameCategory
                         categoryName = ""
                         selectedCardIds = []
                         coverCardId = nil
                         createdCardCount = 0
+                        createdCategory = nil
                     } onView: {
-                        onDismissToHome?() ?? dismiss()
+                        if let cat = createdCategory {
+                            onViewCategory?(cat) ?? onDismissToHome?() ?? dismiss()
+                        } else {
+                            onDismissToHome?() ?? dismiss()
+                        }
                     }
                 }
             }
@@ -1628,7 +1649,7 @@ private struct CategorySaveStep: View {
     @EnvironmentObject var homeViewModel: HomeViewModel
     @State private var isLoading = false
     @State private var errorMessage: String?
-    let onSave: (Int) -> Void
+    let onSave: (Int, Category) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1700,9 +1721,6 @@ private struct CategorySaveStep: View {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             .scaleEffect(0.8)
-                    } else {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 14, weight: .bold))
                     }
                     Text(isLoading ? "Creating..." : "Create Category")
                         .font(.system(size: 17, weight: .semibold))
@@ -1725,16 +1743,22 @@ private struct CategorySaveStep: View {
         errorMessage = nil
         Task {
             do {
-                let category = try await CategoryService.shared.createCategory(
+                var category = try await CategoryService.shared.createCategory(
                     name: categoryName, nameKk: nil, nameEn: nil, icon: nil
                 )
+                // Загружаем обложку если выбрана
+                if let coverBase64 = coverCard?.imageBase64, !coverBase64.isEmpty {
+                    if let updated = try? await CategoryService.shared.uploadCover(categoryId: category.id, imageBase64: coverBase64) {
+                        category = updated
+                    }
+                }
                 // Назначаем выбранные карточки в новую категорию
                 for cardId in selectedCardIds {
                     _ = try? await CardService.shared.updateCard(id: cardId, categoryId: category.id)
                 }
                 await homeViewModel.refreshCategories()
                 isLoading = false
-                onSave(selectedCardIds.count)
+                onSave(selectedCardIds.count, category)
             } catch {
                 errorMessage = error.localizedDescription
                 isLoading = false
@@ -1748,6 +1772,7 @@ private struct CategorySaveStep: View {
 private struct CategorySuccessScreen: View {
     let categoryName: String
     let cardCount: Int
+    let coverCard: Card?
     let onCreateAnother: () -> Void
     let onView: () -> Void
 
@@ -1774,9 +1799,17 @@ private struct CategorySuccessScreen: View {
                 }
 
                 HStack(spacing: 12) {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color(hex: "C5D8F5"))
-                        .frame(width: 44, height: 44)
+                    if let img = coverCard?.image {
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 52, height: 52)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    } else {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color(hex: "C5D8F5"))
+                            .frame(width: 52, height: 52)
+                    }
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(categoryName.isEmpty ? "music" : categoryName)

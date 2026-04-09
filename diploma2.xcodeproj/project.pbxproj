@@ -558,6 +558,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = diploma2/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Unim;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Take a photo to create a communication card";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a photo from your library to create a communication card";
@@ -592,6 +593,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = diploma2/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Unim;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Take a photo to create a communication card";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a photo from your library to create a communication card";

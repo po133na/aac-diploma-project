@@ -18,7 +18,7 @@ struct MainTabView: View {
             // Контент
             Group {
                 switch selectedTab {
-                case .home:     HomeView()
+                case .home:     HomeView().environmentObject(homeViewModel)
                 case .settings: ProfileView()
                 }
             }
@@ -34,6 +34,12 @@ struct MainTabView: View {
             CardManagerView(onDismissToHome: {
                 showCreateSheet = false
                 selectedTab = .home
+            }, onViewCategory: { category in
+                showCreateSheet = false
+                selectedTab = .home
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    homeViewModel.selectCategory(category)
+                }
             })
             .environmentObject(homeViewModel)
         }
