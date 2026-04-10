@@ -883,6 +883,30 @@ async def use_card(
     return card
 
 
+@app.post("/cards/{card_id}/regenerate", response_model=CardResponse)
+async def regenerate_card_image(
+    card_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Перегенерирует изображение карточки по тому же слову."""
+    result = await session.execute(
+        select(Card).where(Card.id == card_id, Card.user_id == current_user.id)
+    )
+    card = result.scalar_one_or_none()
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+
+    try:
+        prompt_word = card.translated_word or card.word
+        card.image_base64 = await _generate_image(f"{prompt_word}, {IMAGE_STYLE_PROMPT}")
+        await session.commit()
+        await session.refresh(card)
+        return card
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.delete("/cards/{card_id}")
 async def delete_card(
     card_id: int,
@@ -1121,12 +1145,13 @@ async def sync(
     Ответ содержит изменённые объекты и список удалённых ID.
     """
     uid = current_user.id
+    since_naive = since.replace(tzinfo=None) if since.tzinfo else since
 
     # Карточки: пользовательские + системные изменённые после since
     cards_result = await session.execute(
         select(Card).where(
             ((Card.user_id == uid) | (Card.user_id == None)),
-            Card.updated_at > since
+            Card.updated_at > since_naive
         )
     )
     cards = cards_result.scalars().all()
@@ -1135,7 +1160,7 @@ async def sync(
     cats_result = await session.execute(
         select(Category).where(
             ((Category.user_id == uid) | (Category.user_id == None)),
-            Category.updated_at > since
+            Category.updated_at > since_naive
         )
     )
     categories = cats_result.scalars().all()
@@ -1144,7 +1169,7 @@ async def sync(
     phrases_result = await session.execute(
         select(Phrase).where(
             Phrase.user_id == uid,
-            Phrase.updated_at > since
+            Phrase.updated_at > since_naive
         )
     )
     raw_phrases = phrases_result.scalars().all()
