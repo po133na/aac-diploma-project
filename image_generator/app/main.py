@@ -298,13 +298,13 @@ async def get_statistics(
     )).all()
     top_phrases = [{"id": r[0], "name": r[1], "usage_count": r[2]} for r in top_phrases_rows]
 
-    # Статистика за последние 7 дней
+    # Статистика за последние 7 дней — считаем уникальные карточки из DailyCardLog
     today = date.today()
     week_ago = today - timedelta(days=6)
     weekly_result = await session.execute(
-        select(func.sum(DailyUsage.cards_used)).where(
-            DailyUsage.user_id == current_user.id,
-            DailyUsage.date >= week_ago
+        select(func.count(DailyCardLog.id)).where(
+            DailyCardLog.user_id == current_user.id,
+            DailyCardLog.date >= week_ago
         )
     )
     this_week_cards = weekly_result.scalar() or 0
