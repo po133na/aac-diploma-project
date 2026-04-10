@@ -102,7 +102,7 @@ struct CustomTabBar: View {
         .padding(.bottom, 28)
         .background(
             Rectangle()
-                .fill(Color.white)
+                .fill(Color("AppSurface"))
                 .shadow(color: .black.opacity(0.08), radius: 16, x: 0, y: -4)
                 .ignoresSafeArea(edges: .bottom)
         )
@@ -122,10 +122,10 @@ struct TabBarItem: View {
             VStack(spacing: 4) {
                 Image(systemName: icon)
                     .font(.system(size: 22))
-                    .foregroundColor(isSelected ? Color(hex: "5BAECC") : Color(hex: "9BB8CC"))
+                    .foregroundColor(isSelected ? Color(hex: "5BAECC") : Color("AppTextHint"))
                 Text(label)
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(isSelected ? Color(hex: "5BAECC") : Color(hex: "9BB8CC"))
+                    .foregroundColor(isSelected ? Color(hex: "5BAECC") : Color("AppTextHint"))
             }
         }
         .buttonStyle(PlainButtonStyle())
@@ -140,9 +140,9 @@ struct CreateCardSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: "EAF4FB").ignoresSafeArea()
+                Color("AppBg").ignoresSafeArea()
                 Text("Create card or folder — coming soon")
-                    .foregroundColor(Color(hex: "6B8BAE"))
+                    .foregroundColor(Color("AppTextSecondary"))
             }
             .navigationTitle("Create")
             .navigationBarTitleDisplayMode(.inline)

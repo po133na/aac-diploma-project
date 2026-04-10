@@ -8,7 +8,7 @@ struct HomeView: View {
 
     var body: some View {
         ZStack {
-            Color(hex: "EAF4FB").ignoresSafeArea()
+            Color("AppBg").ignoresSafeArea()
 
             VStack(spacing: 0) {
                 SentenceBuilderBar(viewModel: viewModel)
@@ -56,34 +56,39 @@ struct SentenceBuilderBar: View {
                     Text("💭").font(.system(size: 20))
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(localization.t("Моё предложение", kk: "Менің сөйлемім", en: "My Sentence"))
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(Color(hex: "1C3F6E"))
-                    Text(localization.t(
-                        "\(viewModel.wordCount) слов",
-                        kk: "\(viewModel.wordCount) сөз",
-                        en: "\(viewModel.wordCount) words"
-                    ))
-                    .font(.system(size: 12))
-                    .foregroundColor(Color(hex: "6B8BAE"))
+                    Text(localization.mySentence)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(Color("AppTextPrimary"))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Text("\(viewModel.wordCount) \(localization.words)")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color("AppTextSecondary"))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
-                Spacer()
+                .frame(maxWidth: 140)
+                Spacer(minLength: 4)
                 Button { viewModel.clearSentence() } label: {
-                    Text(localization.t("Очистить", kk: "Тазалау", en: "Clear"))
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(Color(hex: "9BB8CC"))
+                    Text(localization.clear)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Color("AppTextHint"))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
                 Button { showSpeakSheet = true } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 4) {
                         Image(systemName: "speaker.wave.2.fill")
-                            .font(.system(size: 13))
-                        Text(localization.t("Говорить", kk: "Айту", en: "Speak"))
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: 12))
+                        Text(localization.speak)
+                            .font(.system(size: 13, weight: .bold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
                     }
                     .foregroundColor(.white)
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, 10)
                     .padding(.vertical, 8)
-                    .background(Capsule().fill(isEmpty ? Color(hex: "9BB8CC") : Color(hex: "5BAECC")))
+                    .background(Capsule().fill(isEmpty ? Color("AppTextHint") : Color(hex: "5BAECC")))
                 }
                 .disabled(isEmpty)
             }
@@ -103,12 +108,12 @@ struct SentenceBuilderBar: View {
                     // Inline TextField после токенов
                     TextField(
                         isEmpty
-                            ? localization.t("Нажми на карточку или напиши...", kk: "Картаны басыңыз...", en: "Tap a card or type here...")
-                            : localization.t("ещё слово...", kk: "тағы сөз...", en: "add word..."),
+                            ? localization.tapWordsHint
+                            : localization.orTypeText,
                         text: $viewModel.typedText
                     )
                     .font(.system(size: 15))
-                    .foregroundColor(Color(hex: "1C3F6E"))
+                    .foregroundColor(Color("AppTextPrimary"))
                     .focused($isTyping)
                     .submitLabel(.done)
                     .onSubmit { isTyping = false }
@@ -120,7 +125,7 @@ struct SentenceBuilderBar: View {
             .frame(minHeight: 72, maxHeight: 96)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white)
+                    .fill(Color("AppSurface"))
                     .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
             )
             .padding(.horizontal, 16)
@@ -168,12 +173,12 @@ struct ListenModalView: View {
                             .foregroundColor(.white)
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(localization.t("Слушать", kk: "Тыңдау", en: "Listen"))
+                        Text(localization.listen)
                             .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
-                        Text(localization.t("Ваше предложение", kk: "Сіздің сөйлеміңіз", en: "Your sentence"))
+                            .foregroundColor(Color("AppTextPrimary"))
+                        Text(localization.yourSentence)
                             .font(.system(size: 14))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                     }
                     Spacer()
                 }
@@ -187,7 +192,7 @@ struct ListenModalView: View {
                             ForEach(allWords, id: \.self) { word in
                                 Text(word)
                                     .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(Color(hex: "1C3F6E"))
+                                    .foregroundColor(Color("AppTextPrimary"))
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 10)
                                     .background(
@@ -201,11 +206,11 @@ struct ListenModalView: View {
                     // Поле ручного ввода внутри белого блока
                     HStack(spacing: 8) {
                         TextField(
-                            localization.t("Напишите свой текст...", kk: "Мәтін жазыңыз...", en: "Type your own text..."),
+                            localization.typeToSpeak,
                             text: $manualText
                         )
                         .font(.system(size: 15))
-                        .foregroundColor(Color(hex: "1C3F6E"))
+                        .foregroundColor(Color("AppTextPrimary"))
                         .focused($isManualFocused)
                         .submitLabel(.done)
                         .onSubmit { speakManual() }
@@ -226,7 +231,7 @@ struct ListenModalView: View {
                 .padding(16)
                 .background(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color.white)
+                        .fill(Color("AppSurface"))
                         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
                 )
                 .padding(.horizontal, 16)
@@ -237,7 +242,7 @@ struct ListenModalView: View {
                 Button {
                     viewModel.speakSentence()
                 } label: {
-                    Text(localization.t("Говорить снова", kk: "Қайта айту", en: "Speak Again"))
+                    Text(localization.speakAgain)
                         .font(.system(size: 18, weight: .bold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -255,12 +260,12 @@ struct ListenModalView: View {
             Button { dismiss() } label: {
                 ZStack {
                     Circle()
-                        .fill(Color.white)
+                        .fill(Color("AppSurface"))
                         .frame(width: 36, height: 36)
                         .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(Color(hex: "6B8BAE"))
+                        .foregroundColor(Color("AppTextSecondary"))
                 }
             }
             .padding(.top, 16)
@@ -289,11 +294,11 @@ struct WordChip: View {
         HStack(spacing: 4) {
             Text(word)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(Color(hex: "1C3F6E"))
+                .foregroundColor(Color("AppTextPrimary"))
             Button(action: onRemove) {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(Color(hex: "6B8BAE"))
+                    .foregroundColor(Color("AppTextSecondary"))
             }
         }
         .padding(.horizontal, 10)
@@ -318,16 +323,16 @@ struct HomeContentView: View {
 
                 HStack(spacing: 10) {
                     ZStack {
-                        Circle().fill(Color(hex: "F5ECC5")).frame(width: 40, height: 40)
+                        Circle().fill(Color("AppTintYellow")).frame(width: 40, height: 40)
                         Text("✨").font(.system(size: 20))
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(localization.t("Давай поговорим!", kk: "Сөйлесейік!", en: "Let's Talk!"))
+                        Text(localization.letsTitle)
                             .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
-                        Text(localization.t("Выбери категорию", kk: "Категория таңдаңыз", en: "Choose a category to start"))
+                            .foregroundColor(Color("AppTextPrimary"))
+                        Text(localization.chooseCategory)
                             .font(.system(size: 13))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                     }
                     Spacer()
                 }
@@ -359,10 +364,10 @@ struct HomeContentView: View {
                     VStack(spacing: 12) {
                         Image(systemName: "wifi.exclamationmark")
                             .font(.system(size: 36))
-                            .foregroundColor(Color(hex: "9BB8CC"))
+                            .foregroundColor(Color("AppTextHint"))
                         Text(error)
                             .font(.system(size: 13))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 32)
                         Button(localization.tryAgain) {
@@ -384,7 +389,7 @@ struct HomeContentView: View {
                         HStack {
                             Text(localization.recentCards)
                                 .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(Color(hex: "1C3F6E"))
+                                .foregroundColor(Color("AppTextPrimary"))
                             Spacer()
                             NavigationLink(destination: CardManagerView()) {
                                 Text(localization.viewAll)
@@ -440,7 +445,7 @@ struct RealCategoryRow: View {
             HStack(spacing: 14) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color(hex: "A8C8F0"))
+                        .fill(Color("AppTintSkyBlue"))
                         .frame(width: 54, height: 54)
                     if let img = coverImage {
                         Image(uiImage: img)
@@ -456,14 +461,14 @@ struct RealCategoryRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(category.name)
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(Color(hex: "1C3F6E"))
-                    Text(category.isSystem ? "System category" : "My category")
+                        .foregroundColor(Color("AppTextPrimary"))
+                    Text(category.isSystem ? LocalizationManager.shared.systemCategory : LocalizationManager.shared.myCategory)
                         .font(.system(size: 12))
-                        .foregroundColor(Color(hex: "6B8BAE"))
+                        .foregroundColor(Color("AppTextSecondary"))
                 }
                 Spacer()
                 ZStack {
-                    Circle().fill(Color(hex: "A8C8F0").opacity(0.5)).frame(width: 30, height: 30)
+                    Circle().fill(Color("AppTintSkyBlue").opacity(0.5)).frame(width: 30, height: 30)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "5BAECC"))
@@ -473,7 +478,7 @@ struct RealCategoryRow: View {
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white)
+                    .fill(Color("AppSurface"))
                     .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
             )
         }
@@ -496,13 +501,13 @@ struct MockCategoryRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(category.name)
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(Color(hex: "1C3F6E"))
+                        .foregroundColor(Color("AppTextPrimary"))
                     Text("\(category.words.count) words")
                         .font(.system(size: 12))
-                        .foregroundColor(Color(hex: "6B8BAE"))
+                        .foregroundColor(Color("AppTextSecondary"))
                     Text(category.subtitle)
                         .font(.system(size: 12))
-                        .foregroundColor(Color(hex: "6B8BAE"))
+                        .foregroundColor(Color("AppTextSecondary"))
                 }
                 Spacer()
                 ZStack {
@@ -516,7 +521,7 @@ struct MockCategoryRow: View {
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white)
+                    .fill(Color("AppSurface"))
                     .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
             )
         }
@@ -542,17 +547,17 @@ struct MockCategoryDetailView: View {
                 HStack {
                     Button { viewModel.goBack() } label: {
                         ZStack {
-                            Circle().fill(Color.white).frame(width: 36, height: 36)
+                            Circle().fill(Color("AppSurface")).frame(width: 36, height: 36)
                                 .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(Color(hex: "1C3F6E"))
+                                .foregroundColor(Color("AppTextPrimary"))
                         }
                     }
                     Spacer()
                     Text("✨ \(category.name)")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(Color(hex: "1C3F6E"))
+                        .foregroundColor(Color("AppTextPrimary"))
                     Spacer()
                     Circle().fill(Color.clear).frame(width: 36, height: 36)
                 }
@@ -610,17 +615,17 @@ struct RealCategoryDetailView: View {
                 HStack {
                     Button { viewModel.goBack() } label: {
                         ZStack {
-                            Circle().fill(Color.white).frame(width: 36, height: 36)
+                            Circle().fill(Color("AppSurface")).frame(width: 36, height: 36)
                                 .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(Color(hex: "1C3F6E"))
+                                .foregroundColor(Color("AppTextPrimary"))
                         }
                     }
                     Spacer()
                     Text("\(category.icon ?? "✨") \(category.name)")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(Color(hex: "1C3F6E"))
+                        .foregroundColor(Color("AppTextPrimary"))
                     Spacer()
                     Circle().fill(Color.clear).frame(width: 36, height: 36)
                 }
@@ -634,10 +639,10 @@ struct RealCategoryDetailView: View {
                     VStack(spacing: 12) {
                         Image(systemName: "rectangle.stack")
                             .font(.system(size: 50))
-                            .foregroundColor(Color(hex: "9BB8CC"))
-                        Text("No cards yet")
+                            .foregroundColor(Color("AppTextHint"))
+                        Text(LocalizationManager.shared.noCards)
                             .font(.system(size: 16))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                     }
                     .padding(.top, 60)
                 } else {
@@ -689,7 +694,7 @@ struct RealCardTile: View {
                             .scaledToFill()
                     } else {
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(Color(hex: "C5D8F5").opacity(0.4))
+                            .fill(Color("AppPlaceholderBg").opacity(0.4))
                     }
                 }
                 .frame(height: 70)
@@ -699,7 +704,7 @@ struct RealCardTile: View {
 
                 Text(card.word)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(Color(hex: "2C3E50"))
+                    .foregroundColor(Color("AppTextDark"))
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 4)
@@ -708,7 +713,7 @@ struct RealCardTile: View {
             .frame(height: 120)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color(hex: "C5D8F5").opacity(0.2))
+                    .fill(Color("AppPlaceholderBg").opacity(0.2))
                     .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
             )
             .scaleEffect(isPressed ? 0.94 : 1.0)
@@ -749,7 +754,7 @@ struct WordCardView: View {
                     .padding(.top, 8)
                 Text(word.word)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(Color(hex: "2C3E50"))
+                    .foregroundColor(Color("AppTextDark"))
                     .padding(.bottom, 10)
                     .padding(.top, 4)
             }
@@ -774,18 +779,19 @@ struct WordCardView: View {
 
 struct QuickTipBanner: View {
     var body: some View {
+        let l = LocalizationManager.shared
         HStack(spacing: 10) {
             ZStack {
                 Circle().fill(Color(hex: "5BAECC")).frame(width: 32, height: 32)
                 Image(systemName: "lightbulb.fill").font(.system(size: 14)).foregroundColor(.white)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text("Quick Tip")
+                Text(l.quickTip)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(Color(hex: "1C3F6E"))
-                Text("Tap on any word to add it to your sentence. You can use the same word multiple times!")
+                    .foregroundColor(Color("AppTextPrimary"))
+                Text(l.quickTipBody)
                     .font(.system(size: 12))
-                    .foregroundColor(Color(hex: "6B8BAE"))
+                    .foregroundColor(Color("AppTextSecondary"))
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
@@ -842,7 +848,7 @@ struct RecentCardTile: View {
                             .scaledToFill()
                     } else {
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(Color(hex: "C5D8F5").opacity(0.4))
+                            .fill(Color("AppPlaceholderBg").opacity(0.4))
                     }
                 }
                 .frame(height: 70)
@@ -852,7 +858,7 @@ struct RecentCardTile: View {
 
                 Text(card.word)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(Color(hex: "2C3E50"))
+                    .foregroundColor(Color("AppTextDark"))
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 4)
@@ -861,7 +867,7 @@ struct RecentCardTile: View {
             .frame(height: 120)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color(hex: "C5D8F5").opacity(0.2))
+                    .fill(Color("AppPlaceholderBg").opacity(0.2))
                     .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
             )
             .scaleEffect(isPressed ? 0.94 : 1.0)

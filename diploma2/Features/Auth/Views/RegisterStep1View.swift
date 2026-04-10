@@ -5,6 +5,7 @@ import SwiftUI
 
 struct RegisterStep1View: View {
     @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var localization: LocalizationManager
 
     @Binding var firstName: String
     @Binding var lastName:  String
@@ -45,14 +46,14 @@ struct RegisterStep1View: View {
 
                             // Заголовок
                             VStack(spacing: 6) {
-                                Text("Welcome! 👋")
+                                Text(localization.welcomeEmoji)
                                     .font(.system(size: 26, weight: .bold))
                                     .foregroundColor(AuthColors.titleText)
 
                                 // Если email занят — показываем подсказку вместо subtitle
                                 Text(isEmailTaken
-                                     ? "Email already taken"
-                                     : "Let's get to know you better")
+                                     ? localization.emailAlreadyTaken
+                                     : localization.letsGetToKnowYou)
                                     .font(.system(size: 14))
                                     .foregroundColor(isEmailTaken
                                         ? AuthColors.fieldError
@@ -66,15 +67,15 @@ struct RegisterStep1View: View {
                             // Поля
                             VStack(spacing: 14) {
                                 AuthTextField(
-                                    label: "First Name",
-                                    placeholder: "Enter your name",
+                                    label: localization.firstName,
+                                    placeholder: localization.enterNamePlaceholder,
                                     icon: "person",
                                     text: $firstName
                                 )
 
                                 AuthTextField(
-                                    label: "Last Name",
-                                    placeholder: "Enter your surname",
+                                    label: localization.lastName,
+                                    placeholder: localization.enterSurnamePlaceholder,
                                     icon: "person",
                                     text: $lastName
                                 )
@@ -82,8 +83,8 @@ struct RegisterStep1View: View {
                                 // Email с inline ошибкой
                                 VStack(alignment: .leading, spacing: 4) {
                                     AuthTextField(
-                                        label: "Email Address",
-                                        placeholder: "your@email.com",
+                                        label: localization.emailAddress,
+                                        placeholder: localization.emailPlaceholder,
                                         icon: "person",
                                         text: $email,
                                         isError: isEmailTaken,
@@ -101,7 +102,7 @@ struct RegisterStep1View: View {
 
                             // Кнопка Continue
                             AuthButton(
-                                title: "Continue →",
+                                title: localization.continueArrow,
                                 color: AuthColors.buttonBlue,
                                 isDisabled: !canContinue
                             ) {
@@ -111,8 +112,8 @@ struct RegisterStep1View: View {
 
                             // Ссылка на логин
                             AuthBottomLink(
-                                prefix: "Already have an account?",
-                                actionText: "Login here",
+                                prefix: localization.alreadyHaveAccount,
+                                actionText: localization.loginHere,
                                 action: onBack
                             )
                         }

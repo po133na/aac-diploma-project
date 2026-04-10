@@ -1,7 +1,199 @@
-/* 
-  Localizable.strings
+/*
+  Localizable.strings — English
   diploma2
-
-  Created by Symbat Bayanbayeva on 18.03.2026.
-  
 */
+
+// MARK: - Home
+"my_sentence" = "My Sentence";
+"words" = "words";
+"clear" = "Clear";
+"speak" = "Speak";
+"tap_words_hint" = "Tap words to build...";
+"lets_title" = "Let's Talk!";
+"choose_category" = "Choose a category";
+"recent_cards" = "Recent Cards";
+"view_all" = "View All >";
+"try_again" = "Try Again";
+"no_cards" = "No cards yet";
+"speak_again" = "Speak Again";
+"or_type_text" = "or type text";
+"type_to_speak" = "Type word to speak...";
+"system_category" = "System category";
+"my_category" = "My category";
+"quick_tip" = "Quick Tip";
+"quick_tip_body" = "Tap any word to add it to your sentence.";
+"listen" = "Listen";
+"your_sentence" = "Your sentence";
+
+// MARK: - Profile / Settings
+"activity_overview" = "ACTIVITY OVERVIEW";
+"settings" = "SETTINGS";
+"this_week" = "This week";
+"cards_used" = "cards used";
+"day_streak" = "day streak";
+"total_cards" = "total cards";
+"see_full_stats" = "See full stats ›";
+"communication" = "Communication";
+"accessibility" = "Accessibility";
+"support_about" = "Support & About";
+"large_text" = "Large Text";
+"dark_theme" = "Dark Theme";
+"help_center" = "Help Center";
+"privacy_policy" = "Privacy Policy";
+"version" = "Version 1.0.0";
+"log_out" = "Log Out";
+"delete_account" = "Delete Account";
+"edit_profile" = "Edit Profile";
+"statistics" = "Statistics";
+"most_used_cards" = "Most Used Cards";
+"most_used_phrases" = "Most Used Phrases";
+"weekly_activity" = "Weekly Activity";
+"overview" = "Overview";
+"uses" = "uses";
+"edit_profile_btn" = "Edit profile";
+"delete_action" = "Delete";
+"cannot_undo" = "This action cannot be undone.";
+"total_cards_stat" = "Total Cards";
+"cards_this_week" = "Cards This Week";
+"current_streak" = "Current Streak";
+"total_card_uses" = "Total Card Uses";
+"total_phrases" = "Total Phrases";
+"total_phrase_uses" = "Total Phrase Uses";
+"card_detail" = "Card Detail";
+"edit_profile_coming_soon" = "Edit Profile — coming soon";
+
+// MARK: - Card Manager
+"card_manager" = "Card Manager";
+"cards_total" = "cards total";
+"create_new_card" = "Create New Card";
+"add_custom_card" = "Add a custom card";
+"add_custom_card_subtitle" = "Add a custom card to your library";
+"take_photo" = "Take a Photo";
+"choose_from_gallery" = "Choose from Gallery";
+"create_new_category" = "Create New Category";
+"create_new_category_subtitle" = "Design your own custom category";
+"select_category" = "Select category";
+"save_card" = "Save Card";
+"card_saved" = "Card saved!";
+"added_to_library" = "Added to your library.";
+"add_an_image" = "Add an Image";
+"choose_how_to_create" = "Choose how to create your card image";
+"ai_magic" = "AI Magic ✨";
+"describe_and_ai" = "Describe and let AI create it";
+"take_a_photo_cam" = "Take a Photo 📷";
+"use_your_camera" = "Use your camera";
+"choose_gallery_emoji" = "Choose from Gallery 🖼️";
+"pick_from_library" = "Pick from your photo library";
+"describe_your_image" = "Describe your image";
+"tell_ai_what_you_want" = "Tell AI what you want to see";
+"enter_description" = "Enter your description...";
+"generating" = "Generating...";
+"generate_image" = "Generate Image";
+"image_preview" = "Image Preview";
+"do_you_like_image" = "Do you like the generated image?";
+"no_image" = "No image";
+"save_and_continue" = "Save and Continue";
+"regenerate" = "Regenerate";
+"name_your_card" = "Name Your Card";
+"what_does_this_represent" = "What does this represent?";
+"enter_card_name" = "Enter card name...";
+"ready_to_save" = "Ready to Save!";
+"your_card_looks_amazing" = "Your card looks amazing";
+"loading_categories" = "Loading categories...";
+"no_categories_found" = "No categories found";
+"retry" = "Retry";
+"saving" = "Saving...";
+"save_card_arrow" = "Save Card →";
+"please_select_category" = "Please select a category";
+"create_another_card" = "Create another card";
+"go_to_board" = "Go to Board";
+"step1_label" = "STEP 1: GENERATE WITH AI";
+"step2_label" = "STEP 2: CHOOSE IMAGE SOURCE";
+"step3_label" = "STEP 3: PREVIEW IMAGE";
+"step4_label" = "STEP 4: NAME YOUR CARD";
+"step5_label" = "STEP 5: SAVE YOUR CARD";
+"category_name_title" = "Category Name";
+"give_unique_name" = "Give your category a unique name";
+"enter_the_name" = "Enter the name";
+"your_cards" = "Your cards";
+"select_cards_hint" = "Select cards to add. Long press to set as cover.";
+"skip_arrow" = "Skip →";
+"almost_done" = "Almost Done!";
+"category_looks_perfect" = "Your category looks perfect";
+"category_created" = "Category created!";
+"category_ready" = "Your new category is ready.";
+"step1_cat_label" = "STEP 1: NAME CATEGORY";
+"step2_cat_label" = "STEP 2: ADD CARDS";
+"step3_cat_label" = "STEP 3: SAVE CATEGORY";
+"creating" = "Creating...";
+"create_category_btn" = "Create Category";
+"create_another_category" = "Create another category";
+"view_category" = "View Category";
+"new_category" = "New Category";
+
+// MARK: - Gallery
+"gallery_title" = "Card Gallery";
+"all_tab" = "All";
+"favorites_tab" = "Favorites";
+"categories_tab" = "Categories";
+"no_cards_gallery" = "No cards";
+"create_first_card_hint" = "Create your first card by tapping the + button on the home screen.";
+"no_favorites" = "No favorites";
+"add_to_favorites_hint" = "Add cards to favorites by tapping the heart.";
+"no_categories_gallery" = "No categories";
+"create_category_hint" = "Create a category in settings or when creating a card.";
+"cards_suffix" = "cards";
+
+// MARK: - Auth
+"welcome_back" = "Welcome Back!";
+"login_unsuccessful" = "Login unsuccessful";
+"sign_in_to_continue" = "Sign in to continue";
+"please_check_credentials" = "Please check your credentials";
+"incorrect_email_password" = "Incorrect email or password";
+"email_address" = "Email Address";
+"email_placeholder" = "your@email.com";
+"password_placeholder" = "Enter your password";
+"remember_me" = "Remember me";
+"forgot_password_q" = "Forgot Password ?";
+"sign_in_arrow" = "Sign In →";
+"try_again_arrow" = "Try Again →";
+"or" = "or";
+"dont_have_account" = "Don't have an Account?";
+"sign_up_here" = "Sign Up here";
+"welcome_emoji" = "Welcome! 👋";
+"email_already_taken" = "Email already taken";
+"lets_get_to_know_you" = "Let's get to know you better";
+"first_name" = "First Name";
+"enter_name_placeholder" = "Enter your name";
+"last_name" = "Last Name";
+"enter_surname_placeholder" = "Enter your surname";
+"continue_arrow" = "Continue →";
+"already_have_account" = "Already have an account?";
+"login_here" = "Login here";
+"stay_safe" = "Stay Safe! 🔒";
+"looking_good_almost" = "Looking good! Almost there";
+"secure_your_account" = "Secure your account";
+"create_password_label" = "Create password";
+"confirm_password_label" = "Confirm password";
+"repeat_password_placeholder" = "Repeat your password";
+"almost_done_banner" = "✨ Almost done! One more click! 🎉";
+"registration_failed" = "Registration failed";
+"creating_account" = "Creating account...";
+"reset_password_title" = "Reset Password";
+"enter_email_reset" = "Enter your email to receive reset instructions";
+"error_title" = "Error";
+"success_title" = "Success!";
+"reset_instructions" = "We'll send you a link to reset your password. Check your inbox and spam folder.";
+"sending" = "Sending...";
+"send_reset_link" = "Send Reset Link →";
+"back_to_login" = "← Back to Login";
+"login_btn" = "Log In";
+"register_btn" = "Register";
+"email_label" = "Email";
+"password_label" = "Password";
+"name_label" = "Name";
+"forgot_password_btn" = "Forgot password?";
+"cancel_btn" = "Cancel";
+"save_btn" = "Save";
+"done_btn" = "Done";
+"continue_btn" = "Continue →";

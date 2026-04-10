@@ -3,6 +3,7 @@ import SwiftUI
 
 struct LoginView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var localization: LocalizationManager
     var onRegisterTap: () -> Void
 
     @State private var email        = ""
@@ -34,13 +35,13 @@ struct LoginView: View {
 
                             // Заголовок
                             VStack(spacing: 6) {
-                                Text(isError ? "Login unsuccessful" : "Welcome Back!")
+                                Text(isError ? localization.loginUnsuccessful : localization.welcomeBack)
                                     .font(.system(size: 26, weight: .bold))
                                     .foregroundColor(AuthColors.titleText)
 
                                 Text(isError
-                                     ? "Please check your credentials"
-                                     : "Sign in to continue")
+                                     ? localization.pleaseCheckCredentials
+                                     : localization.signInToContinue)
                                     .font(.system(size: 14))
                                     .foregroundColor(AuthColors.subtitleText)
                             }
@@ -48,7 +49,7 @@ struct LoginView: View {
                             // Ошибка-баннер
                             if let error = authViewModel.loginError {
                                 AuthErrorBanner(
-                                    title: "Incorrect email or password",
+                                    title: localization.incorrectEmailPassword,
                                     subtitle: error
                                 )
                                 .transition(.opacity.combined(with: .move(edge: .top)))
@@ -57,8 +58,8 @@ struct LoginView: View {
                             // Поля
                             VStack(spacing: 14) {
                                 AuthTextField(
-                                    label: "Email Address",
-                                    placeholder: "your@email.com",
+                                    label: localization.emailAddress,
+                                    placeholder: localization.emailPlaceholder,
                                     icon: "envelope",
                                     text: $email,
                                     isError: isError,
@@ -67,8 +68,8 @@ struct LoginView: View {
                                 .focused($focused, equals: .email)
 
                                 AuthSecureField(
-                                    label: "Password",
-                                    placeholder: "Enter your password",
+                                    label: localization.password,
+                                    placeholder: localization.passwordPlaceholder,
                                     text: $password,
                                     isError: isError
                                 )
@@ -88,7 +89,7 @@ struct LoginView: View {
                                                 ? AuthColors.buttonBlue
                                                 : AuthColors.subtitleText)
                                             .font(.system(size: 16))
-                                        Text("Remember me")
+                                        Text(localization.rememberMe)
                                             .font(.system(size: 13))
                                             .foregroundColor(AuthColors.subtitleText)
                                     }
@@ -97,7 +98,7 @@ struct LoginView: View {
 
                                 Spacer()
 
-                                Button("Forgot Password ?") {
+                                Button(localization.forgotPasswordQ) {
                                     showForgotPassword = true
                                 }
                                 .font(.system(size: 13, weight: .semibold))
@@ -107,7 +108,7 @@ struct LoginView: View {
 
                             // Кнопка Sign In
                             AuthButton(
-                                title: isError ? "Try Again →" : "Sign In →",
+                                title: isError ? localization.tryAgainArrow : localization.signInArrow,
                                 color: isError ? AuthColors.buttonSalmon : AuthColors.buttonBlue,
                                 isDisabled: email.isEmpty || password.isEmpty
                             ) {
@@ -119,15 +120,15 @@ struct LoginView: View {
                             // Разделитель
                             HStack {
                                 Rectangle().fill(AuthColors.fieldBorder).frame(height: 1)
-                                Text("or").font(.system(size: 13)).foregroundColor(AuthColors.subtitleText)
+                                Text(localization.or).font(.system(size: 13)).foregroundColor(AuthColors.subtitleText)
                                     .padding(.horizontal, 8)
                                 Rectangle().fill(AuthColors.fieldBorder).frame(height: 1)
                             }
 
                             // Ссылка на регистрацию
                             AuthBottomLink(
-                                prefix: "Don't have an Account?",
-                                actionText: "Sign Up here",
+                                prefix: localization.dontHaveAccount,
+                                actionText: localization.signUpHere,
                                 action: onRegisterTap
                             )
                         }

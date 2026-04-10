@@ -14,6 +14,7 @@ import UIKit
 struct CardManagerView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var homeViewModel: HomeViewModel
+    @EnvironmentObject var localization: LocalizationManager
     @State private var showCreateCard     = false
     @State private var showCreateCategory = false
     var onDismissToHome: (() -> Void)? = nil
@@ -21,7 +22,7 @@ struct CardManagerView: View {
 
     var body: some View {
         ZStack {
-            Color(hex: "EAF4FB").ignoresSafeArea()
+            Color("AppBg").ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
@@ -31,22 +32,22 @@ struct CardManagerView: View {
                         Button { dismiss() } label: {
                             ZStack {
                                 Circle()
-                                    .fill(Color.white)
+                                    .fill(Color("AppSurface"))
                                     .frame(width: 36, height: 36)
                                     .shadow(color: .black.opacity(0.07), radius: 6, x: 0, y: 2)
                                 Image(systemName: "chevron.left")
                                     .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(Color(hex: "1C3F6E"))
+                                    .foregroundColor(Color("AppTextPrimary"))
                             }
                         }
                         Spacer()
                         VStack(spacing: 2) {
-                            Text("Card Manager")
+                            Text(localization.cardManager)
                                 .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(Color(hex: "1C3F6E"))
-                            Text("\(homeViewModel.recentCards.count) cards total")
+                                .foregroundColor(Color("AppTextPrimary"))
+                            Text("\(homeViewModel.recentCards.count) \(localization.cardsTotal)")
                                 .font(.system(size: 12))
-                                .foregroundColor(Color(hex: "6B8BAE"))
+                                .foregroundColor(Color("AppTextSecondary"))
                         }
                         Spacer()
                         Circle().fill(Color.clear).frame(width: 36, height: 36)
@@ -57,11 +58,11 @@ struct CardManagerView: View {
 
                     // ── Recent Cards ──
                     HStack {
-                        Text("Recent Cards")
+                        Text(localization.recentCards)
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
+                            .foregroundColor(Color("AppTextPrimary"))
                         Spacer()
-                        Button("View All >") { onDismissToHome?() }
+                        Button(localization.viewAll) { onDismissToHome?() }
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(Color(hex: "F87171"))
                     }
@@ -75,9 +76,9 @@ struct CardManagerView: View {
                         GridItem(.flexible(), spacing: 10),
                     ]
                     if homeViewModel.recentCards.isEmpty {
-                        Text("No cards yet")
+                        Text(localization.noCards)
                             .font(.system(size: 14))
-                            .foregroundColor(Color(hex: "9BB8CC"))
+                            .foregroundColor(Color("AppTextHint"))
                             .padding(.vertical, 20)
                     } else {
                         LazyVGrid(columns: columns, spacing: 10) {
@@ -101,19 +102,19 @@ struct CardManagerView: View {
                                     .foregroundColor(Color(hex: "F5A623"))
                             }
                             VStack(alignment: .leading, spacing: 3) {
-                                Text("Create New Card")
+                                Text(localization.createNewCard)
                                     .font(.system(size: 16, weight: .bold))
-                                    .foregroundColor(Color(hex: "1C3F6E"))
-                                Text("Add a custom card to your library")
+                                    .foregroundColor(Color("AppTextPrimary"))
+                                Text(localization.addCustomCardSubtitle)
                                     .font(.system(size: 12))
-                                    .foregroundColor(Color(hex: "6B8BAE"))
+                                    .foregroundColor(Color("AppTextSecondary"))
                             }
                             Spacer()
                         }
                         .padding(16)
                         .background(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color(hex: "FFF8E7"))
+                                .fill(Color("AppTintYellow"))
                                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
                         )
                     }
@@ -133,19 +134,19 @@ struct CardManagerView: View {
                                     .foregroundColor(Color(hex: "A78BFA"))
                             }
                             VStack(alignment: .leading, spacing: 3) {
-                                Text("Create New Category")
+                                Text(localization.createNewCategory)
                                     .font(.system(size: 16, weight: .bold))
-                                    .foregroundColor(Color(hex: "1C3F6E"))
-                                Text("Design your own custom category")
+                                    .foregroundColor(Color("AppTextPrimary"))
+                                Text(localization.createNewCategorySubtitle)
                                     .font(.system(size: 12))
-                                    .foregroundColor(Color(hex: "6B8BAE"))
+                                    .foregroundColor(Color("AppTextSecondary"))
                             }
                             Spacer()
                         }
                         .padding(16)
                         .background(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color(hex: "F3EEFF"))
+                                .fill(Color("AppTintPurple"))
                                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
                         )
                     }
@@ -190,21 +191,21 @@ private struct RealMiniCardView: View {
                         .padding(.top, 6)
                 } else {
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(Color(hex: "C5D8F5"))
+                        .fill(Color("AppPlaceholderBg"))
                         .frame(height: 56)
                         .padding(.horizontal, 6)
                         .padding(.top, 6)
                 }
                 Text(card.word)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(hex: "2C3E50"))
+                    .foregroundColor(Color("AppTextDark"))
                     .lineLimit(1)
                     .padding(.bottom, 6)
             }
             .frame(height: 90)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(hex: "EAF4FB"))
+                    .fill(Color("AppBg"))
                     .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
             )
         }
@@ -237,7 +238,7 @@ private struct MiniCardView: View {
                     .padding(.top, 8)
                 Text(word)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(Color(hex: "2C3E50"))
+                    .foregroundColor(Color("AppTextDark"))
                     .padding(.vertical, 8)
             }
             .frame(height: 90)
@@ -300,6 +301,18 @@ struct CreateCardFlow: View {
         Double(step.rawValue) / 5.0
     }
 
+    private func detectPromptLanguage(_ text: String) -> String {
+        let kazakhSpecific = CharacterSet(charactersIn: "әғқңөұүһӘҒҚҢӨҰҮҺ")
+        for scalar in text.unicodeScalars {
+            if kazakhSpecific.contains(scalar) { return "kk" }
+        }
+        for scalar in text.unicodeScalars {
+            let v = scalar.value
+            if v >= 0x0400 && v <= 0x04FF { return "ru" }
+        }
+        return "en"
+    }
+
     private func generateImage() async -> Bool {
         guard !imagePrompt.isEmpty else { return false }
         isLoading = true
@@ -309,7 +322,7 @@ struct CreateCardFlow: View {
         do {
             let response = try await ImageGenService.shared.generateImage(
                 word: imagePrompt,
-                language: "ru", // TODO: взять из настроек пользователя
+                language: detectPromptLanguage(imagePrompt),
                 categoryId: nil,
                 style: selectedStyle
             )
@@ -325,7 +338,7 @@ struct CreateCardFlow: View {
 
     var body: some View {
         ZStack {
-            Color(hex: "EAF4FB").ignoresSafeArea()
+            Color("AppBg").ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // ── Top bar ──
@@ -437,12 +450,13 @@ struct CreateCardFlow: View {
     }
 
     private var stepLabel: String {
+        let l = LocalizationManager.shared
         switch step {
-        case .imageSource:  return "STEP 1: GENERATE WITH AI"
-        case .describeImage: return "STEP 2: CHOOSE IMAGE SOURCE"
-        case .previewImage:  return "STEP 3: PREVIEW IMAGE"
-        case .nameCard:     return "STEP 4: NAME YOUR CARD"
-        case .saveCard:     return "STEP 5: SAVE YOUR CARD"
+        case .imageSource:  return l.step1Label
+        case .describeImage: return l.step2Label
+        case .previewImage:  return l.step3Label
+        case .nameCard:     return l.step4Label
+        case .saveCard:     return l.step5Label
         case .success:      return ""
         }
     }
@@ -483,7 +497,7 @@ private struct CardImageSourceStep: View {
                 // Иконка
                 ZStack {
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(Color(hex: "D4C5F5"))
+                        .fill(Color("AppTintPurple"))
                         .frame(width: 72, height: 72)
                     Image(systemName: "photo.badge.plus")
                         .font(.system(size: 30))
@@ -491,23 +505,24 @@ private struct CardImageSourceStep: View {
                 }
                 .padding(.top, 32)
 
+                let l = LocalizationManager.shared
                 VStack(spacing: 8) {
-                    Text("Add an Image")
+                    Text(l.addAnImage)
                         .font(.system(size: 22, weight: .bold))
-                        .foregroundColor(Color(hex: "1C3F6E"))
-                    Text("Choose how to create your card image")
+                        .foregroundColor(Color("AppTextPrimary"))
+                    Text(l.chooseHowToCreate)
                         .font(.system(size: 14))
-                        .foregroundColor(Color(hex: "6B8BAE"))
+                        .foregroundColor(Color("AppTextSecondary"))
                 }
 
                 // AI Magic
                 ImageSourceRow(
                     icon: "wand.and.stars",
-                    iconBg: Color(hex: "D4C5F5"),
+                    iconBg: Color("AppTintPurple"),
                     iconFg: Color(hex: "7C5CBF"),
-                    title: "AI Magic ✨",
-                    subtitle: "Describe and let AI create it",
-                    borderColor: Color(hex: "D4C5F5")
+                    title: l.aiMagic,
+                    subtitle: l.describeAndAI,
+                    borderColor: Color("AppTintPurple")
                 ) {
                     useAI = true
                     onAI()
@@ -518,9 +533,9 @@ private struct CardImageSourceStep: View {
                     icon: "camera.fill",
                     iconBg: Color(hex: "34D399"),
                     iconFg: .white,
-                    title: "Take a Photo 📷",
-                    subtitle: "Use your camera",
-                    borderColor: Color(hex: "C5F5D8")
+                    title: l.takeAPhotoCam,
+                    subtitle: l.useYourCamera,
+                    borderColor: Color("AppTintGreen")
                 ) {
                     useAI = false
                     onCamera()
@@ -531,9 +546,9 @@ private struct CardImageSourceStep: View {
                     icon: "photo.on.rectangle",
                     iconBg: Color(hex: "5BAECC"),
                     iconFg: .white,
-                    title: "Choose from Gallery 🖼️",
-                    subtitle: "Pick from your photo library",
-                    borderColor: Color(hex: "C5E8F5")
+                    title: l.chooseGalleryEmoji,
+                    subtitle: l.pickFromLibrary,
+                    borderColor: Color("AppTintBlue")
                 ) {
                     useAI = false
                     onLibrary()
@@ -570,19 +585,19 @@ private struct ImageSourceRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(Color(hex: "1C3F6E"))
+                        .foregroundColor(Color("AppTextPrimary"))
                     Text(subtitle)
                         .font(.system(size: 13))
-                        .foregroundColor(Color(hex: "6B8BAE"))
+                        .foregroundColor(Color("AppTextSecondary"))
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .foregroundColor(Color(hex: "9BB8CC"))
+                    .foregroundColor(Color("AppTextHint"))
             }
             .padding(16)
             .background(
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(Color.white)
+                    .fill(Color("AppSurface"))
                     .overlay(
                         RoundedRectangle(cornerRadius: 18)
                             .stroke(borderColor, lineWidth: 1.5)
@@ -612,13 +627,14 @@ private struct CardDescribeStep: View {
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
+        let l = LocalizationManager.shared
+        return VStack(spacing: 0) {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
                     // Иконка
                     ZStack {
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(Color(hex: "D4C5F5"))
+                            .fill(Color("AppTintPurple"))
                             .frame(width: 72, height: 72)
                         Image(systemName: "photo.badge.plus")
                             .font(.system(size: 30))
@@ -627,32 +643,32 @@ private struct CardDescribeStep: View {
                     .padding(.top, 32)
 
                     VStack(spacing: 8) {
-                        Text("Describe your image")
+                        Text(l.describeYourImage)
                             .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
-                        Text("Tell AI what you want to see")
+                            .foregroundColor(Color("AppTextPrimary"))
+                        Text(l.tellAIWhatYouWant)
                             .font(.system(size: 14))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                     }
 
                     // Текстовое поле
                     VStack(alignment: .trailing, spacing: 6) {
                         ZStack(alignment: .topLeading) {
                             RoundedRectangle(cornerRadius: 14)
-                                .fill(Color.white)
+                                .fill(Color("AppSurface"))
                                 .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
                                 .frame(height: 120)
 
                             if prompt.isEmpty {
-                                Text("Enter your description...")
+                                Text(l.enterDescription)
                                     .font(.system(size: 15))
-                                    .foregroundColor(Color(hex: "9BB8CC"))
+                                    .foregroundColor(Color("AppTextHint"))
                                     .padding(14)
                             }
 
                             TextEditor(text: $prompt)
                                 .font(.system(size: 15))
-                                .foregroundColor(Color(hex: "1C3F6E"))
+                                .foregroundColor(Color("AppTextPrimary"))
                                 .padding(10)
                                 .frame(height: 120)
                                 .background(Color.clear)
@@ -660,7 +676,7 @@ private struct CardDescribeStep: View {
 
                         Text("\(prompt.count)/150 characters")
                             .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "9BB8CC"))
+                            .foregroundColor(Color("AppTextHint"))
                     }
                 }
                 .padding(.horizontal, 20)
@@ -695,7 +711,7 @@ private struct CardDescribeStep: View {
                             Image(systemName: "plus")
                                 .font(.system(size: 14, weight: .bold))
                         }
-                        Text(isLoading ? "Generating..." : "Generate Image")
+                        Text(isLoading ? l.generating : l.generateImage)
                             .font(.system(size: 17, weight: .semibold))
                     }
                     .foregroundColor(.white)
@@ -735,7 +751,7 @@ private struct CardPreviewStep: View {
                     // Иконка
                     ZStack {
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(Color(hex: "D4C5F5"))
+                            .fill(Color("AppTintPurple"))
                             .frame(width: 72, height: 72)
                         Image(systemName: "photo.fill")
                             .font(.system(size: 30))
@@ -743,13 +759,14 @@ private struct CardPreviewStep: View {
                     }
                     .padding(.top, 32)
                     
+                    let l = LocalizationManager.shared
                     VStack(spacing: 8) {
-                        Text("Превью изображения")
+                        Text(l.imagePreview)
                             .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
-                        Text("Нравится сгенерированное изображение?")
+                            .foregroundColor(Color("AppTextPrimary"))
+                        Text(l.doYouLikeImage)
                             .font(.system(size: 14))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                     }
                     
                     // Превью изображения
@@ -761,10 +778,10 @@ private struct CardPreviewStep: View {
                             .cornerRadius(20)
                     } else {
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(Color(hex: "C5D8F5"))
+                            .fill(Color("AppPlaceholderBg"))
                             .frame(width: 200, height: 200)
                             .overlay(
-                                Text("No image")
+                                Text(LocalizationManager.shared.noImage)
                                     .font(.caption)
                                     .foregroundColor(.gray)
                             )
@@ -773,7 +790,7 @@ private struct CardPreviewStep: View {
                     // Кнопки
                     VStack(spacing: 12) {
                         Button(action: onSave) {
-                            Text("Сохранить и продолжить")
+                            Text(LocalizationManager.shared.saveAndContinue)
                                 .font(.system(size: 17, weight: .semibold))
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
@@ -785,14 +802,14 @@ private struct CardPreviewStep: View {
                         }
                         
                         Button(action: onRegenerate) {
-                            Text("Сгенерировать заново")
+                            Text(LocalizationManager.shared.regenerate)
                                 .font(.system(size: 17, weight: .semibold))
                                 .foregroundColor(Color(hex: "F87171"))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 18)
                                 .background(
                                     RoundedRectangle(cornerRadius: 18)
-                                        .fill(Color.white)
+                                        .fill(Color("AppSurface"))
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 18)
                                                 .stroke(Color(hex: "F87171"), lineWidth: 2)
@@ -835,35 +852,36 @@ private struct CardNameStep: View {
                                 .cornerRadius(20)
                         } else {
                             RoundedRectangle(cornerRadius: 20)
-                                .fill(Color(hex: "C5D8F5"))
+                                .fill(Color("AppPlaceholderBg"))
                                 .frame(width: 120, height: 120)
                         }
                     }
                     .padding(.top, 32)
 
+                    let l = LocalizationManager.shared
                     VStack(spacing: 8) {
-                        Text("Name Your Card")
+                        Text(l.nameYourCard)
                             .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
-                        Text("What does this represent?")
+                            .foregroundColor(Color("AppTextPrimary"))
+                        Text(l.whatDoesThisRepresent)
                             .font(.system(size: 14))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                     }
 
                     // Поле ввода
                     VStack(alignment: .trailing, spacing: 6) {
-                        TextField("Enter card name...", text: $name)
+                        TextField(l.enterCardName, text: $name)
                             .font(.system(size: 15))
-                            .foregroundColor(Color(hex: "1C3F6E"))
+                            .foregroundColor(Color("AppTextPrimary"))
                             .padding(14)
                             .background(
                                 RoundedRectangle(cornerRadius: 14)
-                                    .fill(Color.white)
+                                    .fill(Color("AppSurface"))
                                     .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
                             )
                         Text("\(name.count)/30 characters")
                             .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "9BB8CC"))
+                            .foregroundColor(Color("AppTextHint"))
                     }
                 }
                 .padding(.horizontal, 20)
@@ -872,7 +890,7 @@ private struct CardNameStep: View {
 
             // Кнопка Continue
             Button(action: onContinue) {
-                Text("Continue →")
+                Text(LocalizationManager.shared.continueArrow)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -920,7 +938,8 @@ private struct CardSaveStep: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        let l = LocalizationManager.shared
+        return VStack(spacing: 0) {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
                     // Check иконка
@@ -935,12 +954,12 @@ private struct CardSaveStep: View {
                     .padding(.top, 32)
 
                     VStack(spacing: 8) {
-                        Text("Ready to Save!")
+                        Text(l.readyToSave)
                             .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
-                        Text("Your card looks amazing")
+                            .foregroundColor(Color("AppTextPrimary"))
+                        Text(l.yourCardLooksAmazing)
                             .font(.system(size: 14))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                     }
 
                     // Превью карточки с реальным изображением
@@ -953,18 +972,18 @@ private struct CardSaveStep: View {
                                 .cornerRadius(16)
                         } else {
                             RoundedRectangle(cornerRadius: 16)
-                                .fill(Color(hex: "C5D8F5"))
+                                .fill(Color("AppPlaceholderBg"))
                                 .frame(width: 130, height: 130)
                         }
 
                         Text(cardName.isEmpty ? "music" : cardName)
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(Color(hex: "1C3F6E"))
+                            .foregroundColor(Color("AppTextPrimary"))
                             .padding(.horizontal, 16)
                             .padding(.vertical, 6)
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.white)
+                                    .fill(Color("AppSurface"))
                                     .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
                             )
                     }
@@ -972,9 +991,9 @@ private struct CardSaveStep: View {
                     // Dropdown категории (обязательно)
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 4) {
-                            Text("Select category")
+                            Text(l.selectCategory)
                                 .font(.system(size: 13))
-                                .foregroundColor(Color(hex: "6B8BAE"))
+                                .foregroundColor(Color("AppTextSecondary"))
                             Text("*")
                                 .font(.system(size: 13, weight: .bold))
                                 .foregroundColor(Color(hex: "F87171"))
@@ -983,19 +1002,19 @@ private struct CardSaveStep: View {
                         if isLoadingCategories {
                             HStack {
                                 ProgressView().scaleEffect(0.8)
-                                Text("Loading categories...")
+                                Text(l.loadingCategories)
                                     .font(.system(size: 14))
-                                    .foregroundColor(Color(hex: "9BB8CC"))
+                                    .foregroundColor(Color("AppTextHint"))
                             }
                             .padding(14)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(RoundedRectangle(cornerRadius: 14).fill(Color.white))
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Color("AppSurface")))
                         } else if displayCategories.isEmpty {
                             VStack(spacing: 8) {
-                                Text(categoriesError ?? "No categories found")
+                                Text(categoriesError ?? l.noCategoriesFound)
                                     .font(.system(size: 14))
                                     .foregroundColor(Color(hex: "F87171"))
-                                Button("Retry") { fetchCategories() }
+                                Button(l.retry) { fetchCategories() }
                                     .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(Color(hex: "5BAECC"))
                             }
@@ -1003,7 +1022,7 @@ private struct CardSaveStep: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(
                                 RoundedRectangle(cornerRadius: 14)
-                                    .fill(Color.white)
+                                    .fill(Color("AppSurface"))
                                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "F87171"), lineWidth: 1))
                             )
                         } else {
@@ -1017,27 +1036,27 @@ private struct CardSaveStep: View {
                                             .font(.system(size: 20))
                                         Text(cat.name)
                                             .font(.system(size: 15, weight: .medium))
-                                            .foregroundColor(Color(hex: "1C3F6E"))
+                                            .foregroundColor(Color("AppTextPrimary"))
                                     } else {
                                         Image(systemName: "square.grid.2x2")
-                                            .foregroundColor(Color(hex: "9BB8CC"))
-                                        Text("Select category")
+                                            .foregroundColor(Color("AppTextHint"))
+                                        Text(l.selectCategory)
                                             .font(.system(size: 15))
-                                            .foregroundColor(Color(hex: "9BB8CC"))
+                                            .foregroundColor(Color("AppTextHint"))
                                     }
                                     Spacer()
                                     Image(systemName: "chevron.down")
                                         .font(.system(size: 13, weight: .medium))
-                                        .foregroundColor(Color(hex: "9BB8CC"))
+                                        .foregroundColor(Color("AppTextHint"))
                                 }
                                 .padding(14)
                                 .background(
                                     RoundedRectangle(cornerRadius: 14)
-                                        .fill(Color.white)
+                                        .fill(Color("AppSurface"))
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 14)
                                                 .stroke(
-                                                    selectedCategoryId != nil ? Color(hex: "5BAECC") : Color(hex: "D0E5F0"),
+                                                    selectedCategoryId != nil ? Color(hex: "5BAECC") : Color("AppBorderMed"),
                                                     lineWidth: 1.5
                                                 )
                                         )
@@ -1076,7 +1095,7 @@ private struct CardSaveStep: View {
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             .scaleEffect(0.8)
                     }
-                    Text(isLoading ? "Saving..." : "Save Card →")
+                    Text(isLoading ? l.saving : l.saveCardArrow)
                         .font(.system(size: 17, weight: .semibold))
                 }
                 .foregroundColor(.white)
@@ -1136,7 +1155,7 @@ private struct CardSaveStep: View {
 
     private func saveCard() {
         guard !cardName.isEmpty, let imgBase64 = imageBase64, let categoryId = selectedCategoryId else {
-            if selectedCategoryId == nil { errorMessage = "Please select a category" }
+            if selectedCategoryId == nil { errorMessage = LocalizationManager.shared.pleaseSelectCategory }
             return
         }
 
@@ -1203,26 +1222,27 @@ private struct CardSuccessScreen: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        let l = LocalizationManager.shared
+        return VStack(spacing: 0) {
             Spacer()
 
             VStack(spacing: 16) {
                 // Конфетти-иконка
                 ZStack {
                     Circle()
-                        .fill(Color(hex: "C5F5D8"))
+                        .fill(Color("AppTintGreen"))
                         .frame(width: 90, height: 90)
                     Text("🎉")
                         .font(.system(size: 44))
                 }
 
                 VStack(spacing: 8) {
-                    Text("Card saved!")
+                    Text(l.cardSaved)
                         .font(.system(size: 26, weight: .bold))
                         .foregroundColor(Color(hex: "2A7A4A"))
-                    Text("Added to your library.")
+                    Text(l.addedToLibrary)
                         .font(.system(size: 14))
-                        .foregroundColor(Color(hex: "3A8A52"))
+                        .foregroundColor(Color("AppSuccessText"))
                 }
 
                 // Превью сохранённой карточки
@@ -1235,24 +1255,24 @@ private struct CardSuccessScreen: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                     } else {
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(hex: "C5D8F5"))
+                            .fill(Color("AppPlaceholderBg"))
                             .frame(width: 56, height: 56)
                     }
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(cardName.isEmpty ? "music" : cardName)
                             .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
+                            .foregroundColor(Color("AppTextPrimary"))
                         Text("Saved to: \(categoryName.isEmpty ? "General" : categoryName)")
                             .font(.system(size: 12))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                     }
                     Spacer()
                 }
                 .padding(14)
                 .background(
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.white)
+                        .fill(Color("AppSurface"))
                         .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2)
                 )
                 .padding(.horizontal, 20)
@@ -1266,7 +1286,7 @@ private struct CardSuccessScreen: View {
                     HStack(spacing: 8) {
                         Image(systemName: "plus")
                             .font(.system(size: 14, weight: .bold))
-                        Text("Create another card")
+                        Text(l.createAnotherCard)
                             .font(.system(size: 17, weight: .semibold))
                     }
                     .foregroundColor(.white)
@@ -1279,14 +1299,14 @@ private struct CardSuccessScreen: View {
                 }
 
                 Button(action: onGoToBoard) {
-                    Text("Go to Board")
+                    Text(l.goToBoard)
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(Color(hex: "1C3F6E"))
+                        .foregroundColor(Color("AppTextPrimary"))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
                         .background(
                             RoundedRectangle(cornerRadius: 18)
-                                .fill(Color.white)
+                                .fill(Color("AppSurface"))
                                 .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
                         )
                 }
@@ -1332,17 +1352,18 @@ struct CreateCategoryFlow: View {
     }
 
     private var stepLabel: String {
+        let l = LocalizationManager.shared
         switch step {
-        case .nameCategory:  return "STEP 1: NAME CATEGORY"
-        case .addCards:      return "STEP 2: ADD CARDS"
-        case .savingPreview: return "STEP 3: SAVE CATEGORY"
+        case .nameCategory:  return l.step1CatLabel
+        case .addCards:      return l.step2CatLabel
+        case .savingPreview: return l.step3CatLabel
         case .success:       return ""
         }
     }
 
     var body: some View {
         ZStack {
-            Color(hex: "EAF4FB").ignoresSafeArea()
+            Color("AppBg").ignoresSafeArea()
 
             VStack(spacing: 0) {
                 if step != .success {
@@ -1437,28 +1458,29 @@ private struct CategoryNameStep: View {
                     }
                     .padding(.top, 32)
 
+                    let l = LocalizationManager.shared
                     VStack(spacing: 8) {
-                        Text("Category Name")
+                        Text(l.categoryNameTitle)
                             .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
-                        Text("Give your category a unique name")
+                            .foregroundColor(Color("AppTextPrimary"))
+                        Text(l.giveUniqueName)
                             .font(.system(size: 14))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                     }
 
                     VStack(alignment: .trailing, spacing: 6) {
-                        TextField("Enter the name", text: $name)
+                        TextField(l.enterTheName, text: $name)
                             .font(.system(size: 15))
-                            .foregroundColor(Color(hex: "1C3F6E"))
+                            .foregroundColor(Color("AppTextPrimary"))
                             .padding(14)
                             .background(
                                 RoundedRectangle(cornerRadius: 14)
-                                    .fill(Color.white)
+                                    .fill(Color("AppSurface"))
                                     .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
                             )
                         Text("\(name.count)/20 characters")
                             .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "9BB8CC"))
+                            .foregroundColor(Color("AppTextHint"))
                     }
                 }
                 .padding(.horizontal, 20)
@@ -1466,7 +1488,7 @@ private struct CategoryNameStep: View {
             }
 
             Button(action: onContinue) {
-                Text("Continue →")
+                Text(LocalizationManager.shared.continueArrow)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -1499,23 +1521,24 @@ private struct CategoryAddCardsStep: View {
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
+        let l = LocalizationManager.shared
+        return VStack(spacing: 0) {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Your cards")
+                        Text(l.yourCards)
                             .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
-                        Text("Select cards to add. Long press to set as cover.")
+                            .foregroundColor(Color("AppTextPrimary"))
+                        Text(l.selectCardsHint)
                             .font(.system(size: 13))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                     }
                     .padding(.top, 20)
 
                     if cards.isEmpty {
-                        Text("No cards yet")
+                        Text(l.noCards)
                             .font(.system(size: 14))
-                            .foregroundColor(Color(hex: "9BB8CC"))
+                            .foregroundColor(Color("AppTextHint"))
                             .frame(maxWidth: .infinity)
                             .padding(.top, 20)
                     } else {
@@ -1545,7 +1568,7 @@ private struct CategoryAddCardsStep: View {
             }
 
             Button(action: onNext) {
-                Text(selectedCardIds.isEmpty ? "Skip →" : "Add \(selectedCardIds.count) Cards →")
+                Text(selectedCardIds.isEmpty ? l.skipArrow : "Add \(selectedCardIds.count) Cards →")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -1583,21 +1606,21 @@ private struct RealSelectableCardView: View {
                         .padding(.top, 6)
                 } else {
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(Color(hex: "C5D8F5"))
+                        .fill(Color("AppPlaceholderBg"))
                         .frame(height: 54)
                         .padding(.horizontal, 6)
                         .padding(.top, 6)
                 }
                 Text(card.word)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(hex: "2C3E50"))
+                    .foregroundColor(Color("AppTextDark"))
                     .lineLimit(1)
                     .padding(.bottom, 6)
             }
             .frame(height: 90)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.white)
+                    .fill(Color("AppSurface"))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
                             .stroke(
@@ -1652,7 +1675,8 @@ private struct CategorySaveStep: View {
     let onSave: (Int, Category) -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
+        let l = LocalizationManager.shared
+        return VStack(spacing: 0) {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
                     ZStack {
@@ -1666,12 +1690,12 @@ private struct CategorySaveStep: View {
                     .padding(.top, 32)
 
                     VStack(spacing: 8) {
-                        Text("Almost Done!")
+                        Text(l.almostDone)
                             .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
-                        Text("Your category looks perfect")
+                            .foregroundColor(Color("AppTextPrimary"))
+                        Text(l.categoryLooksPerfect)
                             .font(.system(size: 14))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                     }
 
                     // Превью категории с обложкой
@@ -1686,13 +1710,13 @@ private struct CategorySaveStep: View {
                                 .padding(.horizontal, 40)
                         } else {
                             RoundedRectangle(cornerRadius: 18)
-                                .fill(Color(hex: "C5E8F5"))
+                                .fill(Color("AppTintBlue"))
                                 .frame(height: 120)
                                 .padding(.horizontal, 40)
                         }
-                        Text(categoryName.isEmpty ? "New Category" : categoryName)
+                        Text(categoryName.isEmpty ? l.newCategory : categoryName)
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(coverCard?.image != nil ? Color.white : Color(hex: "1C3F6E"))
+                            .foregroundColor(coverCard?.image != nil ? Color.white : Color("AppTextPrimary"))
                             .padding(.horizontal, 12)
                             .padding(.bottom, 10)
                             .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 1)
@@ -1701,7 +1725,7 @@ private struct CategorySaveStep: View {
                     if !selectedCardIds.isEmpty {
                         Text("\(selectedCardIds.count) card\(selectedCardIds.count == 1 ? "" : "s") will be added")
                             .font(.system(size: 13))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                     }
 
                     if let errorMessage = errorMessage {
@@ -1722,7 +1746,7 @@ private struct CategorySaveStep: View {
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             .scaleEffect(0.8)
                     }
-                    Text(isLoading ? "Creating..." : "Create Category")
+                    Text(isLoading ? l.creating : l.createCategoryBtn)
                         .font(.system(size: 17, weight: .semibold))
                 }
                 .foregroundColor(.white)
@@ -1777,25 +1801,26 @@ private struct CategorySuccessScreen: View {
     let onView: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
+        let l = LocalizationManager.shared
+        return VStack(spacing: 0) {
             Spacer()
 
             VStack(spacing: 16) {
                 ZStack {
                     Circle()
-                        .fill(Color(hex: "C5F5D8"))
+                        .fill(Color("AppTintGreen"))
                         .frame(width: 90, height: 90)
                     Text("🎉")
                         .font(.system(size: 44))
                 }
 
                 VStack(spacing: 8) {
-                    Text("Category created!")
+                    Text(l.categoryCreated)
                         .font(.system(size: 26, weight: .bold))
                         .foregroundColor(Color(hex: "2A7A4A"))
-                    Text("Your new category is ready.")
+                    Text(l.categoryReady)
                         .font(.system(size: 14))
-                        .foregroundColor(Color(hex: "3A8A52"))
+                        .foregroundColor(Color("AppSuccessText"))
                 }
 
                 HStack(spacing: 12) {
@@ -1807,24 +1832,24 @@ private struct CategorySuccessScreen: View {
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                     } else {
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(Color(hex: "C5D8F5"))
+                            .fill(Color("AppPlaceholderBg"))
                             .frame(width: 52, height: 52)
                     }
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(categoryName.isEmpty ? "music" : categoryName)
                             .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
+                            .foregroundColor(Color("AppTextPrimary"))
                         Text("\(cardCount) card\(cardCount == 1 ? "" : "s")")
                             .font(.system(size: 12))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                     }
                     Spacer()
                 }
                 .padding(14)
                 .background(
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.white)
+                        .fill(Color("AppSurface"))
                         .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2)
                 )
                 .padding(.horizontal, 20)
@@ -1836,7 +1861,7 @@ private struct CategorySuccessScreen: View {
                 Button(action: onCreateAnother) {
                     HStack(spacing: 8) {
                         Image(systemName: "plus").font(.system(size: 14, weight: .bold))
-                        Text("Create another category")
+                        Text(l.createAnotherCategory)
                             .font(.system(size: 17, weight: .semibold))
                     }
                     .foregroundColor(.white)
@@ -1846,14 +1871,14 @@ private struct CategorySuccessScreen: View {
                 }
 
                 Button(action: onView) {
-                    Text("View Category")
+                    Text(l.viewCategory)
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(Color(hex: "1C3F6E"))
+                        .foregroundColor(Color("AppTextPrimary"))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
                         .background(
                             RoundedRectangle(cornerRadius: 18)
-                                .fill(Color.white)
+                                .fill(Color("AppSurface"))
                                 .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
                         )
                 }
@@ -1882,12 +1907,12 @@ struct CreateFlowTopBar: View {
                 Button(action: onBack) {
                     ZStack {
                         Circle()
-                            .fill(Color.white)
+                            .fill(Color("AppSurface"))
                             .frame(width: 34, height: 34)
                             .shadow(color: .black.opacity(0.07), radius: 4, x: 0, y: 2)
                         Image(systemName: "chevron.left")
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
+                            .foregroundColor(Color("AppTextPrimary"))
                     }
                 }
 
@@ -1903,12 +1928,12 @@ struct CreateFlowTopBar: View {
                 Button(action: onClose) {
                     ZStack {
                         Circle()
-                            .fill(Color.white)
+                            .fill(Color("AppSurface"))
                             .frame(width: 34, height: 34)
                             .shadow(color: .black.opacity(0.07), radius: 4, x: 0, y: 2)
                         Image(systemName: "xmark")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                     }
                 }
             }
@@ -1920,7 +1945,7 @@ struct CreateFlowTopBar: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Rectangle()
-                        .fill(Color(hex: "E5EEF5"))
+                        .fill(Color("AppBorderLight"))
                         .frame(height: 3)
                     Rectangle()
                         .fill(accentColor)
@@ -1946,11 +1971,11 @@ private struct StyleChip: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(isSelected ? Color(hex: "7C5CBF") : Color(hex: "1C3F6E"))
+                    .foregroundColor(isSelected ? Color(hex: "7C5CBF") : Color("AppTextPrimary"))
                 
                 Text(description)
                     .font(.system(size: 11))
-                    .foregroundColor(isSelected ? Color(hex: "9B7CE0") : Color(hex: "6B8BAE"))
+                    .foregroundColor(isSelected ? Color(hex: "9B7CE0") : Color("AppTextSecondary"))
                     .lineLimit(2)
             }
             .padding(10)
@@ -1960,7 +1985,7 @@ private struct StyleChip: View {
                     .fill(isSelected ? Color(hex: "F0E8FF") : Color.white)
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
-                            .stroke(isSelected ? Color(hex: "7C5CBF") : Color(hex: "D0E5F0"), lineWidth: 1)
+                            .stroke(isSelected ? Color(hex: "7C5CBF") : Color("AppBorderMed"), lineWidth: 1)
                     )
             )
         }
@@ -1990,7 +2015,7 @@ struct CameraCardFlow: View {
 
     var body: some View {
         ZStack {
-            Color(hex: "EAF4FB").ignoresSafeArea()
+            Color("AppBg").ignoresSafeArea()
             switch step {
             case .pickSource:
                 sourcePickerStep
@@ -2022,7 +2047,7 @@ struct CameraCardFlow: View {
         VStack(spacing: 32) {
             Text("Add Photo Card")
                 .font(.system(size: 22, weight: .bold))
-                .foregroundColor(Color(hex: "1C3F6E"))
+                .foregroundColor(Color("AppTextPrimary"))
                 .padding(.top, 32)
 
             VStack(spacing: 16) {
@@ -2035,11 +2060,11 @@ struct CameraCardFlow: View {
                             .background(Circle().fill(Color(hex: "34D399")))
                         Text("Take a photo")
                             .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
+                            .foregroundColor(Color("AppTextPrimary"))
                         Spacer()
                     }
                     .padding(18)
-                    .background(RoundedRectangle(cornerRadius: 18).fill(Color.white)
+                    .background(RoundedRectangle(cornerRadius: 18).fill(Color("AppSurface"))
                         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2))
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -2053,11 +2078,11 @@ struct CameraCardFlow: View {
                             .background(Circle().fill(Color(hex: "5BAECC")))
                         Text("Choose from library")
                             .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
+                            .foregroundColor(Color("AppTextPrimary"))
                         Spacer()
                     }
                     .padding(18)
-                    .background(RoundedRectangle(cornerRadius: 18).fill(Color.white)
+                    .background(RoundedRectangle(cornerRadius: 18).fill(Color("AppSurface"))
                         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2))
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -2067,7 +2092,7 @@ struct CameraCardFlow: View {
             Spacer()
 
             Button("Cancel") { dismiss() }
-                .foregroundColor(Color(hex: "9BB8CC"))
+                .foregroundColor(Color("AppTextHint"))
                 .padding(.bottom, 32)
         }
     }
@@ -2093,10 +2118,10 @@ struct CameraCardFlow: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Card name")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color(hex: "6B8BAE"))
+                        .foregroundColor(Color("AppTextSecondary"))
                     TextField("e.g. Apple, Dog, Happy...", text: $cardWord)
                         .padding(14)
-                        .background(RoundedRectangle(cornerRadius: 14).fill(Color.white))
+                        .background(RoundedRectangle(cornerRadius: 14).fill(Color("AppSurface")))
                 }
                 .padding(.horizontal, 20)
 
@@ -2105,7 +2130,7 @@ struct CameraCardFlow: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Category")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                         Button {
                             showCategoryPicker = true
                         } label: {
@@ -2115,27 +2140,27 @@ struct CameraCardFlow: View {
                                     Text(cat.icon ?? "📁").font(.system(size: 20))
                                     Text(cat.name)
                                         .font(.system(size: 15, weight: .medium))
-                                        .foregroundColor(Color(hex: "1C3F6E"))
+                                        .foregroundColor(Color("AppTextPrimary"))
                                 } else {
                                     Image(systemName: "square.grid.2x2")
-                                        .foregroundColor(Color(hex: "9BB8CC"))
+                                        .foregroundColor(Color("AppTextHint"))
                                     Text("Select category")
                                         .font(.system(size: 15))
-                                        .foregroundColor(Color(hex: "9BB8CC"))
+                                        .foregroundColor(Color("AppTextHint"))
                                 }
                                 Spacer()
                                 Image(systemName: "chevron.down")
                                     .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(Color(hex: "9BB8CC"))
+                                    .foregroundColor(Color("AppTextHint"))
                             }
                             .padding(14)
                             .background(
                                 RoundedRectangle(cornerRadius: 14)
-                                    .fill(Color.white)
+                                    .fill(Color("AppSurface"))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 14)
                                             .stroke(
-                                                selectedCategoryId != nil ? Color(hex: "5BAECC") : Color(hex: "D0E5F0"),
+                                                selectedCategoryId != nil ? Color(hex: "5BAECC") : Color("AppBorderMed"),
                                                 lineWidth: 1.5
                                             )
                                     )
@@ -2179,11 +2204,11 @@ struct CameraCardFlow: View {
                     }
                     .background(RoundedRectangle(cornerRadius: 18)
                         .fill(cardWord.trimmingCharacters(in: .whitespaces).isEmpty || selectedCategoryId == nil
-                              ? Color(hex: "9BB8CC") : Color(hex: "34D399")))
+                              ? Color("AppTextHint") : Color(hex: "34D399")))
                     .disabled(cardWord.trimmingCharacters(in: .whitespaces).isEmpty || selectedCategoryId == nil || isLoading)
 
                     Button("Back") { step = .pickSource }
-                        .foregroundColor(Color(hex: "9BB8CC"))
+                        .foregroundColor(Color("AppTextHint"))
                         .font(.system(size: 15))
                 }
                 .padding(.horizontal, 20)
@@ -2234,7 +2259,7 @@ struct CategoryPickerSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: "EAF4FB").ignoresSafeArea()
+                Color("AppBg").ignoresSafeArea()
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 8) {
                         ForEach(categories) { cat in
@@ -2246,14 +2271,14 @@ struct CategoryPickerSheet: View {
                                 HStack(spacing: 14) {
                                     ZStack {
                                         RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color(hex: "A8C8F0").opacity(0.4))
+                                            .fill(Color("AppTintSkyBlue").opacity(0.4))
                                             .frame(width: 44, height: 44)
                                         Text(cat.icon ?? "📁")
                                             .font(.system(size: 22))
                                     }
                                     Text(cat.name)
                                         .font(.system(size: 16, weight: .medium))
-                                        .foregroundColor(Color(hex: "1C3F6E"))
+                                        .foregroundColor(Color("AppTextPrimary"))
                                     Spacer()
                                     if selectedId == cat.id {
                                         Image(systemName: "checkmark.circle.fill")
@@ -2265,7 +2290,7 @@ struct CategoryPickerSheet: View {
                                 .padding(.vertical, 12)
                                 .background(
                                     RoundedRectangle(cornerRadius: 16)
-                                        .fill(selectedId == cat.id ? Color(hex: "EAF4FB") : Color.white)
+                                        .fill(selectedId == cat.id ? Color("AppBg") : Color.white)
                                         .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
                                 )
                             }

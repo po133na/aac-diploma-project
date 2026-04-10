@@ -18,14 +18,14 @@ enum AuthColors {
     static let card           = Color(hex: "EAF4F9").opacity(0.85)
 
     // Текст
-    static let titleText      = Color(hex: "1C3F6E")
-    static let subtitleText   = Color(hex: "6B8BAE")
-    static let labelText      = Color(hex: "1C3F6E")
+    static let titleText      = Color("AppTextPrimary")
+    static let subtitleText   = Color("AppTextSecondary")
+    static let labelText      = Color("AppTextPrimary")
 
     // Поля ввода
-    static let fieldBg        = Color(hex: "EEF5F9")
-    static let fieldIcon      = Color(hex: "9BB8CC")
-    static let fieldBorder    = Color(hex: "D0E5F0")
+    static let fieldBg        = Color("AppSurfaceSecondary")
+    static let fieldIcon      = Color("AppTextHint")
+    static let fieldBorder    = Color("AppBorderMed")
     static let fieldError     = Color(hex: "F87171")
 
     // Кнопки
@@ -38,7 +38,7 @@ enum AuthColors {
     static let errorBannerBg  = Color(hex: "FFE8E8")
     static let errorBannerText = Color(hex: "D64545")
     static let hintBannerBg   = Color(hex: "E8F5EC")
-    static let hintBannerText = Color(hex: "3A8A52")
+    static let hintBannerText = Color("AppSuccessText")
 
     // Бейдж Step
     static let stepBadge      = Color(hex: "5BAECC")

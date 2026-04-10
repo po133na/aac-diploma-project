@@ -10,6 +10,7 @@ import SwiftUI
 
 struct RegisterStep2View: View {
     @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var localization: LocalizationManager
 
     @Binding var password:        String
     @Binding var confirmPassword: String
@@ -58,13 +59,13 @@ struct RegisterStep2View: View {
 
                             // Заголовок
                             VStack(spacing: 6) {
-                                Text("Stay Safe! 🔒")
+                                Text(localization.staySafe)
                                     .font(.system(size: 26, weight: .bold))
                                     .foregroundColor(AuthColors.titleText)
 
                                 Text(allRequirementsMet
-                                     ? "Looking good! Almost there"
-                                     : "Secure your account")
+                                     ? localization.lookingGoodAlmost
+                                     : localization.secureYourAccount)
                                     .font(.system(size: 14))
                                     .foregroundColor(AuthColors.subtitleText)
                                     .animation(.easeInOut, value: allRequirementsMet)
@@ -76,15 +77,15 @@ struct RegisterStep2View: View {
                             // Поля пароля
                             VStack(spacing: 14) {
                                 AuthSecureField(
-                                    label: "Create password",
-                                    placeholder: "Enter your password",
+                                    label: localization.createPasswordLabel,
+                                    placeholder: localization.passwordPlaceholder,
                                     text: $password,
                                     isError: showPasswordError
                                 )
 
                                 AuthSecureField(
-                                    label: "Confirm password",
-                                    placeholder: "Repeat your password",
+                                    label: localization.confirmPasswordLabel,
+                                    placeholder: localization.repeatPasswordPlaceholder,
                                     text: $confirmPassword,
                                     isError: showConfirmError
                                 )
@@ -98,14 +99,14 @@ struct RegisterStep2View: View {
 
                             // Hint баннер — появляется когда всё хорошо
                             if allRequirementsMet {
-                                AuthHintBanner(text: "✨ Almost done! One more click! 🎉")
+                                AuthHintBanner(text: localization.almostDoneBanner)
                                     .transition(.opacity.combined(with: .move(edge: .bottom)))
                             }
 
                             // Ошибка регистрации с сервера
                             if let error = authViewModel.registerError {
                                 AuthErrorBanner(
-                                    title: "Registration failed",
+                                    title: localization.registrationFailed,
                                     subtitle: error
                                 )
                                 .transition(.opacity)
@@ -113,7 +114,7 @@ struct RegisterStep2View: View {
 
                             // Кнопка Continue — зелёная на шаге 2
                             AuthButton(
-                                title: authViewModel.isLoading ? "Creating account..." : "Continue →",
+                                title: authViewModel.isLoading ? localization.creatingAccount : localization.continueArrow,
                                 color: AuthColors.buttonGreen,
                                 isDisabled: !allRequirementsMet || authViewModel.isLoading
                             ) {
@@ -122,8 +123,8 @@ struct RegisterStep2View: View {
 
                             // Ссылка на логин
                             AuthBottomLink(
-                                prefix: "Already have an account?",
-                                actionText: "Login here",
+                                prefix: localization.alreadyHaveAccount,
+                                actionText: localization.loginHere,
                                 action: {
                                     // Сбрасываем всё и идём на логин
                                     password = ""

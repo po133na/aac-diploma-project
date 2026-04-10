@@ -10,6 +10,7 @@ import SwiftUI
 struct ForgotPasswordView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var localization: LocalizationManager
     
     @State private var email = ""
     @State private var isLoading = false
@@ -40,35 +41,35 @@ struct ForgotPasswordView: View {
                             
                             // Заголовок
                             VStack(spacing: 6) {
-                                Text("Reset Password")
+                                Text(localization.resetPasswordTitle)
                                     .font(.system(size: 26, weight: .bold))
                                     .foregroundColor(AuthColors.titleText)
-                                
-                                Text("Enter your email to receive reset instructions")
+
+                                Text(localization.enterEmailReset)
                                     .font(.system(size: 14))
                                     .foregroundColor(AuthColors.subtitleText)
                                     .multilineTextAlignment(.center)
                             }
-                            
+
                             // Сообщения
                             if let error = errorMessage {
                                 AuthErrorBanner(
-                                    title: "Error",
+                                    title: localization.errorTitle,
                                     subtitle: error
                                 )
                             }
-                            
+
                             if let success = successMessage {
                                 AuthSuccessBanner(
-                                    title: "Success!",
+                                    title: localization.successTitle,
                                     subtitle: success
                                 )
                             }
-                            
+
                             // Поле email
                             AuthTextField(
-                                label: "Email Address",
-                                placeholder: "your@email.com",
+                                label: localization.emailAddress,
+                                placeholder: localization.emailPlaceholder,
                                 icon: "envelope",
                                 text: $email,
                                 isError: errorMessage != nil,
@@ -76,28 +77,28 @@ struct ForgotPasswordView: View {
                             )
                             .focused($isEmailFocused)
                             .disabled(isLoading)
-                            
+
                             // Инструкция
-                            Text("We'll send you a link to reset your password. Check your inbox and spam folder.")
+                            Text(localization.resetInstructions)
                                 .font(.system(size: 13))
                                 .foregroundColor(AuthColors.subtitleText)
                                 .multilineTextAlignment(.center)
                                 .padding(.vertical, 8)
-                            
+
                             // Кнопка Send
                             AuthButton(
-                                title: isLoading ? "Sending..." : "Send Reset Link →",
+                                title: isLoading ? localization.sending : localization.sendResetLink,
                                 color: AuthColors.buttonBlue,
                                 isDisabled: email.isEmpty || isLoading
                             ) {
                                 sendResetLink()
                             }
-                            
+
                             // Кнопка Back
                             Button {
                                 dismiss()
                             } label: {
-                                Text("← Back to Login")
+                                Text(localization.backToLogin)
                                     .font(.system(size: 15, weight: .medium))
                                     .foregroundColor(AuthColors.subtitleText)
                                     .padding(.vertical, 12)

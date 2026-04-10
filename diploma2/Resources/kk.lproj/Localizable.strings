@@ -1,7 +1,199 @@
-/* 
-  Localizable.strings
+/*
+  Localizable.strings — Қазақша
   diploma2
-
-  Created by Symbat Bayanbayeva on 18.03.2026.
-  
 */
+
+// MARK: - Басты бет
+"my_sentence" = "Менің сөйлемім";
+"words" = "сөз";
+"clear" = "Тазарту";
+"speak" = "Айту";
+"tap_words_hint" = "Сөз таңдаңыз...";
+"lets_title" = "Сөйлесейік!";
+"choose_category" = "Санат таңдаңыз";
+"recent_cards" = "Соңғы карталар";
+"view_all" = "Барлығын қарау >";
+"try_again" = "Қайталап көру";
+"no_cards" = "Карталар жоқ";
+"speak_again" = "Қайта айту";
+"or_type_text" = "немесе мәтін енгізіңіз";
+"type_to_speak" = "Сөз жазыңыз...";
+"system_category" = "Жүйелік санат";
+"my_category" = "Менің санатым";
+"quick_tip" = "Кеңес";
+"quick_tip_body" = "Сөйлемге қосу үшін сөзді басыңыз.";
+"listen" = "Тыңдау";
+"your_sentence" = "Сіздің сөйлемiңiз";
+
+// MARK: - Профиль / Параметрлер
+"activity_overview" = "БЕЛСЕНДІЛІК";
+"settings" = "ПАРАМЕТРЛЕР";
+"this_week" = "Осы аптада";
+"cards_used" = "карта";
+"day_streak" = "күндік серия";
+"total_cards" = "барлық карталар";
+"see_full_stats" = "Толық статистика ›";
+"communication" = "Байланыс";
+"accessibility" = "Қолжетімділік";
+"support_about" = "Қолдау";
+"large_text" = "Үлкен мәтін";
+"dark_theme" = "Қара реңк";
+"help_center" = "Анықтама орталығы";
+"privacy_policy" = "Құпиялылық туралы келісім";
+"version" = "Нұсқа 1.0.0";
+"log_out" = "Шығу";
+"delete_account" = "Аккаунтты жою";
+"edit_profile" = "Өңдеу";
+"statistics" = "Статистика";
+"most_used_cards" = "Жиі қолданылатын карталар";
+"most_used_phrases" = "Жиі тіркестер";
+"weekly_activity" = "Апталық статистика";
+"overview" = "Шолу";
+"uses" = "рет";
+"edit_profile_btn" = "Профильді өңдеу";
+"delete_action" = "Жою";
+"cannot_undo" = "Бұл әрекетті болдырмау мүмкін емес.";
+"total_cards_stat" = "Барлық карталар";
+"cards_this_week" = "Аптада қолданылған карталар";
+"current_streak" = "Ағымдағы серия";
+"total_card_uses" = "Барлық пайдаланылған карталар";
+"total_phrases" = "Барлық тіркестер";
+"total_phrase_uses" = "Барлық пайдаланылған тіркестер";
+"card_detail" = "Карта туралы мәлімет";
+"edit_profile_coming_soon" = "Профильді өңдеу — жақында";
+
+// MARK: - Карта менеджері
+"card_manager" = "Карта менеджері";
+"cards_total" = "Барлық карталар";
+"create_new_card" = "Жаңа карта жасау";
+"add_custom_card" = "Өз картаңызды қосыңыз";
+"add_custom_card_subtitle" = "Өз картаңызды санатқа қосыңыз";
+"take_photo" = "Суретке түсіру";
+"choose_from_gallery" = "Галереядан таңдау";
+"create_new_category" = "Жаңа санат жасау";
+"create_new_category_subtitle" = "Өз санатыңызды жасаңыз";
+"select_category" = "Санат таңдаңыз";
+"save_card" = "Картаны сақтау";
+"card_saved" = "Карта сақталды!";
+"added_to_library" = "Санатқа қосылды.";
+"add_an_image" = "Сурет қосыңыз";
+"choose_how_to_create" = "Сурет жасау тәсілін таңдаңыз";
+"ai_magic" = "AI Сиқыры ✨";
+"describe_and_ai" = "ИИ құралына картаңызды сипаттаңыз";
+"take_a_photo_cam" = "Суретке түсіру 📷";
+"use_your_camera" = "Камераны пайдалану";
+"choose_gallery_emoji" = "Галереядан таңдау 🖼️";
+"pick_from_library" = "Фотогалереядан таңдау";
+"describe_your_image" = "Суретіңізді сипаттаңыз";
+"tell_ai_what_you_want" = "ИИ-ге не көргіңіз келетінін айтыңыз";
+"enter_description" = "Сипаттама енгізіңіз...";
+"generating" = "Жасалуда...";
+"generate_image" = "Сурет жасау";
+"image_preview" = "Суреттің алдын ала қарауы";
+"do_you_like_image" = "Жасалған суретке ұнайсыз ба?";
+"no_image" = "Сурет жоқ";
+"save_and_continue" = "Сақтап жалғастыру";
+"regenerate" = "Қайта жасау";
+"name_your_card" = "Картаны атаңыз";
+"what_does_this_represent" = "Бұл нені білдіреді?";
+"enter_card_name" = "Карта атауын енгізіңіз...";
+"ready_to_save" = "Сақтауға дайын!";
+"your_card_looks_amazing" = "Картаңыз керемет";
+"loading_categories" = "Санаттар жүктелуде...";
+"no_categories_found" = "Санаттар табылмады";
+"retry" = "Қайталау";
+"saving" = "Сақтау...";
+"save_card_arrow" = "Картаны сақтау →";
+"please_select_category" = "Санат таңдаңыз";
+"create_another_card" = "Тағы карта жасау";
+"go_to_board" = "Тақтаға өту";
+"step1_label" = "1-ШАГ: ИИ-МЕН ЖАСАУ";
+"step2_label" = "2-ШАГ: СУРЕТ КӨЗІН ТАҢДАУ";
+"step3_label" = "3-ШАГ: СУРЕТТІ ҚАРАУ";
+"step4_label" = "4-ШАГ: КАРТА АТАУЫ";
+"step5_label" = "5-ШАГ: КАРТАНЫ САҚТАУ";
+"category_name_title" = "Санат атауы";
+"give_unique_name" = "Бірегей атау беріңіз";
+"enter_the_name" = "Атауды енгізіңіз";
+"your_cards" = "Сіздің карталарыңыз";
+"select_cards_hint" = "Карталарды таңдаңыз. Мұқаба үшін ұзақ басыңыз.";
+"skip_arrow" = "Өткізіп жіберу →";
+"almost_done" = "Дерлік дайын!";
+"category_looks_perfect" = "Санатыңыз мінсіз";
+"category_created" = "Санат жасалды!";
+"category_ready" = "Жаңа санатыңыз дайын.";
+"step1_cat_label" = "1-ШАГ: САНАТ АТАУЫ";
+"step2_cat_label" = "2-ШАГ: КАРТАЛАР ҚОСУ";
+"step3_cat_label" = "3-ШАГ: САНАТТЫ САҚТАУ";
+"creating" = "Жасалуда...";
+"create_category_btn" = "Санат жасау";
+"create_another_category" = "Тағы санат жасау";
+"view_category" = "Санатты қарау";
+"new_category" = "Жаңа санат";
+
+// MARK: - Галерея
+"gallery_title" = "Карточка галереясы";
+"all_tab" = "Барлығы";
+"favorites_tab" = "Таңдаулылар";
+"categories_tab" = "Санаттар";
+"no_cards_gallery" = "Карталар жоқ";
+"create_first_card_hint" = "Бас экрандағы «+» түймесін басып, бірінші картаны жасаңыз.";
+"no_favorites" = "Таңдаулылар жоқ";
+"add_to_favorites_hint" = "Жүрекшені басу арқылы карталарды таңдаулыларға қосыңыз.";
+"no_categories_gallery" = "Санаттар жоқ";
+"create_category_hint" = "Параметрлерде немесе карта жасау кезінде санат жасаңыз.";
+"cards_suffix" = "карта";
+
+// MARK: - Авторизация
+"welcome_back" = "Қайта оралдыңыз!";
+"login_unsuccessful" = "Кіру сәтсіз болды";
+"sign_in_to_continue" = "Жалғастыру үшін кіріңіз";
+"please_check_credentials" = "Деректеріңізді тексеріңіз";
+"incorrect_email_password" = "Қате email немесе құпиясөз";
+"email_address" = "Email мекенжайы";
+"email_placeholder" = "your@email.com";
+"password_placeholder" = "Құпиясөзді енгізіңіз";
+"remember_me" = "Мені есте сақтау";
+"forgot_password_q" = "Құпиясөзді ұмыттыңыз ба?";
+"sign_in_arrow" = "Кіру →";
+"try_again_arrow" = "Қайталап көру →";
+"or" = "немесе";
+"dont_have_account" = "Аккаунтыңыз жоқ па?";
+"sign_up_here" = "Мұнда тіркелу";
+"welcome_emoji" = "Қош келдіңіз! 👋";
+"email_already_taken" = "Email бос емес";
+"lets_get_to_know_you" = "Сізбен танысайық";
+"first_name" = "Аты";
+"enter_name_placeholder" = "Атыңызды енгізіңіз";
+"last_name" = "Тегі";
+"enter_surname_placeholder" = "Тегіңізді енгізіңіз";
+"continue_arrow" = "Жалғастыру →";
+"already_have_account" = "Аккаунтыңыз бар ма?";
+"login_here" = "Мұнда кіру";
+"stay_safe" = "Қауіпсіз болыңыз! 🔒";
+"looking_good_almost" = "Тамаша! Дерлік дайын";
+"secure_your_account" = "Аккаунтты қорғаңыз";
+"create_password_label" = "Құпиясөз жасаңыз";
+"confirm_password_label" = "Құпиясөзді растаңыз";
+"repeat_password_placeholder" = "Құпиясөзді қайталаңыз";
+"almost_done_banner" = "✨ Дерлік дайын! Тағы бір рет! 🎉";
+"registration_failed" = "Тіркелу сәтсіз";
+"creating_account" = "Аккаунт жасалуда...";
+"reset_password_title" = "Құпиясөзді қалпына келтіру";
+"enter_email_reset" = "Нұсқауларды алу үшін email енгізіңіз";
+"error_title" = "Қате";
+"success_title" = "Сәтті!";
+"reset_instructions" = "Парольді қалпына келтіру сілтемесін жібереміз. Кіріс және спам папкасын тексеріңіз.";
+"sending" = "Жіберілуде...";
+"send_reset_link" = "Сілтемені жіберу →";
+"back_to_login" = "← Кіруге оралу";
+"login_btn" = "Кіру";
+"register_btn" = "Тіркелу";
+"email_label" = "Email";
+"password_label" = "Құпиясөз";
+"name_label" = "Аты";
+"forgot_password_btn" = "Құпиясөзді ұмыттыңыз ба?";
+"cancel_btn" = "Болдырмау";
+"save_btn" = "Сақтау";
+"done_btn" = "Дайын";
+"continue_btn" = "Жалғастыру →";

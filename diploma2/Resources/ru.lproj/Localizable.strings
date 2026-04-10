@@ -1,7 +1,199 @@
-/* 
-  Localizable.strings
+/*
+  Localizable.strings — Русский
   diploma2
-
-  Created by Symbat Bayanbayeva on 18.03.2026.
-  
 */
+
+// MARK: - Главная
+"my_sentence" = "Моё предложение";
+"words" = "слов";
+"clear" = "Очистить";
+"speak" = "Говорить";
+"tap_words_hint" = "Нажми на слова...";
+"lets_title" = "Давай поговорим!";
+"choose_category" = "Выбери категорию";
+"recent_cards" = "Недавние карточки";
+"view_all" = "Смотреть все >";
+"try_again" = "Попробовать снова";
+"no_cards" = "Нет карточек";
+"speak_again" = "Озвучить снова";
+"or_type_text" = "или введи текст";
+"type_to_speak" = "Введи слово для озвучки...";
+"system_category" = "Системная категория";
+"my_category" = "Моя категория";
+"quick_tip" = "Совет";
+"quick_tip_body" = "Нажимай на слова, чтобы добавить в предложение.";
+"listen" = "Слушать";
+"your_sentence" = "Ваше предложение";
+
+// MARK: - Профиль / Настройки
+"activity_overview" = "АКТИВНОСТЬ";
+"settings" = "НАСТРОЙКИ";
+"this_week" = "На этой неделе";
+"cards_used" = "карточек";
+"day_streak" = "дней подряд";
+"total_cards" = "всего карточек";
+"see_full_stats" = "Полная статистика ›";
+"communication" = "Коммуникация";
+"accessibility" = "Доступность";
+"support_about" = "Поддержка";
+"large_text" = "Крупный текст";
+"dark_theme" = "Тёмная тема";
+"help_center" = "Центр помощи";
+"privacy_policy" = "Политика конфиденциальности";
+"version" = "Версия 1.0.0";
+"log_out" = "Выйти";
+"delete_account" = "Удалить аккаунт";
+"edit_profile" = "Редактировать";
+"statistics" = "Статистика";
+"most_used_cards" = "Часто используемые";
+"most_used_phrases" = "Частые фразы";
+"weekly_activity" = "Активность за неделю";
+"overview" = "Обзор";
+"uses" = "раз";
+"edit_profile_btn" = "Редактировать профиль";
+"delete_action" = "Удалить";
+"cannot_undo" = "Это действие нельзя отменить.";
+"total_cards_stat" = "Всего карточек";
+"cards_this_week" = "Карточек за неделю";
+"current_streak" = "Текущая серия";
+"total_card_uses" = "Всего использований";
+"total_phrases" = "Всего фраз";
+"total_phrase_uses" = "Всего использований фраз";
+"card_detail" = "Детали карточки";
+"edit_profile_coming_soon" = "Редактирование профиля — скоро";
+
+// MARK: - Менеджер карточек
+"card_manager" = "Менеджер карточек";
+"cards_total" = "карточек всего";
+"create_new_card" = "Создать карточку";
+"add_custom_card" = "Добавить свою карточку";
+"add_custom_card_subtitle" = "Добавьте свою карточку в библиотеку";
+"take_photo" = "Сфотографировать";
+"choose_from_gallery" = "Выбрать из галереи";
+"create_new_category" = "Создать категорию";
+"create_new_category_subtitle" = "Создайте свою категорию";
+"select_category" = "Выберите категорию";
+"save_card" = "Сохранить карточку";
+"card_saved" = "Карточка сохранена!";
+"added_to_library" = "Добавлено в библиотеку.";
+"add_an_image" = "Добавить изображение";
+"choose_how_to_create" = "Выберите способ создания изображения";
+"ai_magic" = "AI Магия ✨";
+"describe_and_ai" = "Опишите и ИИ создаст";
+"take_a_photo_cam" = "Сфотографировать 📷";
+"use_your_camera" = "Использовать камеру";
+"choose_gallery_emoji" = "Выбрать из галереи 🖼️";
+"pick_from_library" = "Выбрать из фотогалереи";
+"describe_your_image" = "Опишите ваше изображение";
+"tell_ai_what_you_want" = "Скажите ИИ что вы хотите увидеть";
+"enter_description" = "Введите описание...";
+"generating" = "Генерация...";
+"generate_image" = "Создать изображение";
+"image_preview" = "Превью изображения";
+"do_you_like_image" = "Нравится сгенерированное изображение?";
+"no_image" = "Нет изображения";
+"save_and_continue" = "Сохранить и продолжить";
+"regenerate" = "Сгенерировать заново";
+"name_your_card" = "Назовите карточку";
+"what_does_this_represent" = "Что это означает?";
+"enter_card_name" = "Введите название карточки...";
+"ready_to_save" = "Готово к сохранению!";
+"your_card_looks_amazing" = "Ваша карточка выглядит великолепно";
+"loading_categories" = "Загрузка категорий...";
+"no_categories_found" = "Категории не найдены";
+"retry" = "Повторить";
+"saving" = "Сохранение...";
+"save_card_arrow" = "Сохранить карточку →";
+"please_select_category" = "Выберите категорию";
+"create_another_card" = "Создать ещё карточку";
+"go_to_board" = "На доску";
+"step1_label" = "ШАГ 1: СОЗДАТЬ С ИИ";
+"step2_label" = "ШАГ 2: ВЫБРАТЬ ИСТОЧНИК";
+"step3_label" = "ШАГ 3: ПРЕДПРОСМОТР";
+"step4_label" = "ШАГ 4: НАЗВАНИЕ КАРТОЧКИ";
+"step5_label" = "ШАГ 5: СОХРАНИТЬ КАРТОЧКУ";
+"category_name_title" = "Название категории";
+"give_unique_name" = "Дайте уникальное название";
+"enter_the_name" = "Введите название";
+"your_cards" = "Ваши карточки";
+"select_cards_hint" = "Выберите карточки. Долгое нажатие для обложки.";
+"skip_arrow" = "Пропустить →";
+"almost_done" = "Почти готово!";
+"category_looks_perfect" = "Ваша категория выглядит идеально";
+"category_created" = "Категория создана!";
+"category_ready" = "Ваша новая категория готова.";
+"step1_cat_label" = "ШАГ 1: НАЗВАНИЕ КАТЕГОРИИ";
+"step2_cat_label" = "ШАГ 2: ДОБАВИТЬ КАРТОЧКИ";
+"step3_cat_label" = "ШАГ 3: СОХРАНИТЬ КАТЕГОРИЮ";
+"creating" = "Создание...";
+"create_category_btn" = "Создать категорию";
+"create_another_category" = "Создать ещё категорию";
+"view_category" = "Посмотреть категорию";
+"new_category" = "Новая категория";
+
+// MARK: - Галерея
+"gallery_title" = "Галерея карточек";
+"all_tab" = "Все";
+"favorites_tab" = "Избранное";
+"categories_tab" = "Категории";
+"no_cards_gallery" = "Нет карточек";
+"create_first_card_hint" = "Создайте первую карточку, нажав кнопку «+» на главном экране.";
+"no_favorites" = "Нет избранных";
+"add_to_favorites_hint" = "Добавьте карточки в избранное, нажав на сердечко.";
+"no_categories_gallery" = "Нет категорий";
+"create_category_hint" = "Создайте категорию в настройках или при создании карточки.";
+"cards_suffix" = "карточек";
+
+// MARK: - Авторизация
+"welcome_back" = "Добро пожаловать!";
+"login_unsuccessful" = "Вход не выполнен";
+"sign_in_to_continue" = "Войдите чтобы продолжить";
+"please_check_credentials" = "Проверьте ваши данные";
+"incorrect_email_password" = "Неверный email или пароль";
+"email_address" = "Email адрес";
+"email_placeholder" = "your@email.com";
+"password_placeholder" = "Введите пароль";
+"remember_me" = "Запомнить меня";
+"forgot_password_q" = "Забыли пароль ?";
+"sign_in_arrow" = "Войти →";
+"try_again_arrow" = "Попробовать снова →";
+"or" = "или";
+"dont_have_account" = "Нет аккаунта?";
+"sign_up_here" = "Зарегистрируйтесь здесь";
+"welcome_emoji" = "Добро пожаловать! 👋";
+"email_already_taken" = "Email уже занят";
+"lets_get_to_know_you" = "Давайте познакомимся";
+"first_name" = "Имя";
+"enter_name_placeholder" = "Введите ваше имя";
+"last_name" = "Фамилия";
+"enter_surname_placeholder" = "Введите фамилию";
+"continue_arrow" = "Продолжить →";
+"already_have_account" = "Уже есть аккаунт?";
+"login_here" = "Войти здесь";
+"stay_safe" = "Будьте в безопасности! 🔒";
+"looking_good_almost" = "Отлично! Почти готово";
+"secure_your_account" = "Защитите аккаунт";
+"create_password_label" = "Создайте пароль";
+"confirm_password_label" = "Подтвердите пароль";
+"repeat_password_placeholder" = "Повторите пароль";
+"almost_done_banner" = "✨ Почти готово! Ещё один клик! 🎉";
+"registration_failed" = "Ошибка регистрации";
+"creating_account" = "Создание аккаунта...";
+"reset_password_title" = "Сброс пароля";
+"enter_email_reset" = "Введите email для получения инструкций";
+"error_title" = "Ошибка";
+"success_title" = "Успешно!";
+"reset_instructions" = "Мы отправим ссылку для сброса пароля. Проверьте входящие и папку спама.";
+"sending" = "Отправка...";
+"send_reset_link" = "Отправить ссылку →";
+"back_to_login" = "← Назад ко входу";
+"login_btn" = "Войти";
+"register_btn" = "Регистрация";
+"email_label" = "Email";
+"password_label" = "Пароль";
+"name_label" = "Имя";
+"forgot_password_btn" = "Забыли пароль?";
+"cancel_btn" = "Отмена";
+"save_btn" = "Сохранить";
+"done_btn" = "Готово";
+"continue_btn" = "Продолжить →";

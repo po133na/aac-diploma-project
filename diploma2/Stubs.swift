@@ -22,89 +22,221 @@ final class LocalizationManager: ObservableObject {
         currentLanguage = AppLanguage(rawValue: saved) ?? .russian
     }
 
-    func t(_ ru: String, kk: String, en: String) -> String {
-        switch currentLanguage {
-        case .russian:  return ru
-        case .kazakh:   return kk
-        case .english:  return en
-        }
-    }
-
     var isLanguageSelected: Bool {
         UserDefaults.standard.string(forKey: "app_language") != nil
     }
 
+    // MARK: - Core lookup (loads from Localizable.strings files)
+    func s(_ key: String) -> String {
+        let lang = currentLanguage.rawValue
+        if let path = Bundle.main.path(forResource: "Localizable", ofType: "strings", inDirectory: nil, forLocalization: lang),
+           let dict = NSDictionary(contentsOfFile: path) as? [String: String],
+           let value = dict[key] {
+            return value
+        }
+        // Fallback to English
+        if let path = Bundle.main.path(forResource: "Localizable", ofType: "strings", inDirectory: nil, forLocalization: "en"),
+           let dict = NSDictionary(contentsOfFile: path) as? [String: String],
+           let value = dict[key] {
+            return value
+        }
+        return key
+    }
+
     // MARK: - Home
-    var mySentence:        String { t("Моё предложение",           kk: "Менің сөйлемім",         en: "My Sentence") }
-    var words:             String { t("слов",                      kk: "сөз",                    en: "words") }
-    var clear:             String { t("Очистить",                  kk: "Тазарту",                en: "Clear") }
-    var speak:             String { t("Говорить",                  kk: "Айту",                   en: "Speak") }
-    var tapWordsHint:      String { t("Нажми на слова...",         kk: "Сөз таңдаңыз...",        en: "Tap words to build...") }
-    var letsTitle:         String { t("Давай поговорим!",          kk: "Сөйлесейік!",            en: "Let's Talk!") }
-    var chooseCategory:    String { t("Выбери категорию",          kk: "Категория таңдаңыз",     en: "Choose a category") }
-    var recentCards:       String { t("Недавние карточки",         kk: "Соңғы карталар",         en: "Recent Cards") }
-    var viewAll:           String { t("Смотреть все >",            kk: "Барлығын қарау >",       en: "View All >") }
-    var tryAgain:          String { t("Попробовать снова",         kk: "Қайталап көру",          en: "Try Again") }
-    var noCards:           String { t("Нет карточек",              kk: "Карталар жоқ",           en: "No cards yet") }
-    var speakAgain:        String { t("Озвучить снова",            kk: "Қайта айту",             en: "Speak Again") }
-    var orTypeText:        String { t("или введи текст",           kk: "немесе мәтін енгізіңіз", en: "or type text") }
-    var typeToSpeak:       String { t("Введи слово для озвучки...",kk: "Сөз жазыңыз...",         en: "Type word to speak...") }
-    var systemCategory:    String { t("Системная категория",       kk: "Жүйелік санат",          en: "System category") }
-    var myCategory:        String { t("Моя категория",             kk: "Менің санатым",          en: "My category") }
-    var quickTip:          String { t("Совет",                     kk: "Кеңес",                  en: "Quick Tip") }
-    var quickTipBody:      String { t("Нажимай на слова, чтобы добавить в предложение.", kk: "Сөйлемге қосу үшін сөзді басыңыз.", en: "Tap any word to add it to your sentence.") }
-    var listen:            String { t("Слушать",                   kk: "Тыңдау",                 en: "Listen") }
-    var yourSentence:      String { t("Ваше предложение",          kk: "Сіздің сөйлемiңiз",     en: "Your sentence") }
+    var mySentence:        String { s("my_sentence") }
+    var words:             String { s("words") }
+    var clear:             String { s("clear") }
+    var speak:             String { s("speak") }
+    var tapWordsHint:      String { s("tap_words_hint") }
+    var letsTitle:         String { s("lets_title") }
+    var chooseCategory:    String { s("choose_category") }
+    var recentCards:       String { s("recent_cards") }
+    var viewAll:           String { s("view_all") }
+    var tryAgain:          String { s("try_again") }
+    var noCards:           String { s("no_cards") }
+    var speakAgain:        String { s("speak_again") }
+    var orTypeText:        String { s("or_type_text") }
+    var typeToSpeak:       String { s("type_to_speak") }
+    var systemCategory:    String { s("system_category") }
+    var myCategory:        String { s("my_category") }
+    var quickTip:          String { s("quick_tip") }
+    var quickTipBody:      String { s("quick_tip_body") }
+    var listen:            String { s("listen") }
+    var yourSentence:      String { s("your_sentence") }
 
     // MARK: - Profile / Settings
-    var activityOverview:  String { t("АКТИВНОСТЬ",                kk: "БЕЛСЕНДІЛІК",            en: "ACTIVITY OVERVIEW") }
-    var settings:          String { t("НАСТРОЙКИ",                 kk: "ПАРАМЕТРЛЕР",            en: "SETTINGS") }
-    var thisWeek:          String { t("На этой неделе",            kk: "Осы аптада",             en: "This week") }
-    var cardsUsed:         String { t("карточек",                  kk: "карта",                  en: "cards used") }
-    var dayStreak:         String { t("дней подряд",               kk: "күндік серия",           en: "day streak") }
-    var totalCards:        String { t("всего карточек",            kk: "барлық карталар",        en: "total cards") }
-    var seeFullStats:      String { t("Полная статистика ›",       kk: "Толық статистика ›",     en: "See full stats ›") }
-    var communication:     String { t("Коммуникация",              kk: "Байланыс",               en: "Communication") }
-    var accessibility:     String { t("Доступность",               kk: "Қолжетімділік",          en: "Accessibility") }
-    var supportAbout:      String { t("Поддержка",                 kk: "Қолдау",                 en: "Support & About") }
-    var largeText:         String { t("Крупный текст",             kk: "Үлкен мәтін",            en: "Large Text") }
-    var darkTheme:         String { t("Тёмная тема",               kk: "Қара тақырып",           en: "Dark Theme") }
-    var helpCenter:        String { t("Центр помощи",              kk: "Анықтама орталығы",      en: "Help Center") }
-    var privacyPolicy:     String { t("Политика конфиденциальности", kk: "Құпиялылық саясаты",  en: "Privacy Policy") }
-    var version:           String { t("Версия 1.0.0",              kk: "Нұсқа 1.0.0",            en: "Version 1.0.0") }
-    var logOut:            String { t("Выйти",                     kk: "Шығу",                   en: "Log Out") }
-    var deleteAccount:     String { t("Удалить аккаунт",           kk: "Аккаунтты жою",          en: "Delete Account") }
-    var editProfile:       String { t("Редактировать",             kk: "Өңдеу",                  en: "Edit Profile") }
-    var statistics:        String { t("Статистика",                kk: "Статистика",             en: "Statistics") }
-    var mostUsedCards:     String { t("Часто используемые",        kk: "Жиі қолданылатын",       en: "Most Used Cards") }
-    var mostUsedPhrases:   String { t("Частые фразы",              kk: "Жиі тіркестер",          en: "Most Used Phrases") }
-    var weeklyActivity:    String { t("Активность за неделю",      kk: "Апталық белсенділік",    en: "Weekly Activity") }
-    var overview:          String { t("Обзор",                     kk: "Шолу",                   en: "Overview") }
-    var uses:              String { t("раз",                       kk: "рет",                    en: "uses") }
+    var activityOverview:  String { s("activity_overview") }
+    var settings:          String { s("settings") }
+    var thisWeek:          String { s("this_week") }
+    var cardsUsed:         String { s("cards_used") }
+    var dayStreak:         String { s("day_streak") }
+    var totalCards:        String { s("total_cards") }
+    var seeFullStats:      String { s("see_full_stats") }
+    var communication:     String { s("communication") }
+    var accessibility:     String { s("accessibility") }
+    var supportAbout:      String { s("support_about") }
+    var largeText:         String { s("large_text") }
+    var darkTheme:         String { s("dark_theme") }
+    var helpCenter:        String { s("help_center") }
+    var privacyPolicy:     String { s("privacy_policy") }
+    var version:           String { s("version") }
+    var logOut:            String { s("log_out") }
+    var deleteAccount:     String { s("delete_account") }
+    var editProfile:       String { s("edit_profile") }
+    var statistics:        String { s("statistics") }
+    var mostUsedCards:     String { s("most_used_cards") }
+    var mostUsedPhrases:   String { s("most_used_phrases") }
+    var weeklyActivity:    String { s("weekly_activity") }
+    var overview:          String { s("overview") }
+    var uses:              String { s("uses") }
+    var editProfileBtn:    String { s("edit_profile_btn") }
+    var deleteAction:      String { s("delete_action") }
+    var cannotUndo:        String { s("cannot_undo") }
+    var totalCardsStat:    String { s("total_cards_stat") }
+    var cardsThisWeek:     String { s("cards_this_week") }
+    var currentStreak:     String { s("current_streak") }
+    var totalCardUses:     String { s("total_card_uses") }
+    var totalPhrases:      String { s("total_phrases") }
+    var totalPhraseUses:   String { s("total_phrase_uses") }
+    var cardDetail:        String { s("card_detail") }
+    var editProfileComingSoon: String { s("edit_profile_coming_soon") }
 
     // MARK: - Card Manager
-    var cardManager:       String { t("Менеджер карточек",         kk: "Карта менеджері",        en: "Card Manager") }
-    var createNewCard:     String { t("Создать карточку",          kk: "Жаңа карта жасау",       en: "Create New Card") }
-    var addCustomCard:     String { t("Добавить свою карточку",    kk: "Өз картаңызды қосыңыз",  en: "Add a custom card") }
-    var takePhoto:         String { t("Сфотографировать",          kk: "Сурет түсіру",           en: "Take a Photo") }
-    var chooseFromGallery: String { t("Выбрать из галереи",        kk: "Галереядан таңдау",      en: "Choose from Gallery") }
-    var createNewCategory: String { t("Создать категорию",         kk: "Жаңа санат жасау",       en: "Create New Category") }
-    var selectCategory:    String { t("Выберите категорию",        kk: "Санат таңдаңыз",         en: "Select category") }
-    var saveCard:          String { t("Сохранить карточку",        kk: "Картаны сақтау",         en: "Save Card") }
-    var cardSaved:         String { t("Карточка сохранена!",       kk: "Карта сақталды!",        en: "Card saved!") }
-    var addedToLibrary:    String { t("Добавлено в библиотеку.",   kk: "Кітапханаға қосылды.",   en: "Added to your library.") }
+    var cardManager:                String { s("card_manager") }
+    var cardsTotal:                 String { s("cards_total") }
+    var createNewCard:              String { s("create_new_card") }
+    var addCustomCard:              String { s("add_custom_card") }
+    var addCustomCardSubtitle:      String { s("add_custom_card_subtitle") }
+    var takePhoto:                  String { s("take_photo") }
+    var chooseFromGallery:          String { s("choose_from_gallery") }
+    var createNewCategory:          String { s("create_new_category") }
+    var createNewCategorySubtitle:  String { s("create_new_category_subtitle") }
+    var selectCategory:             String { s("select_category") }
+    var saveCard:                   String { s("save_card") }
+    var cardSaved:                  String { s("card_saved") }
+    var addedToLibrary:             String { s("added_to_library") }
+    var addAnImage:                 String { s("add_an_image") }
+    var chooseHowToCreate:          String { s("choose_how_to_create") }
+    var aiMagic:                    String { s("ai_magic") }
+    var describeAndAI:              String { s("describe_and_ai") }
+    var takeAPhotoCam:              String { s("take_a_photo_cam") }
+    var useYourCamera:              String { s("use_your_camera") }
+    var chooseGalleryEmoji:         String { s("choose_gallery_emoji") }
+    var pickFromLibrary:            String { s("pick_from_library") }
+    var describeYourImage:          String { s("describe_your_image") }
+    var tellAIWhatYouWant:          String { s("tell_ai_what_you_want") }
+    var enterDescription:           String { s("enter_description") }
+    var generating:                 String { s("generating") }
+    var generateImage:              String { s("generate_image") }
+    var imagePreview:               String { s("image_preview") }
+    var doYouLikeImage:             String { s("do_you_like_image") }
+    var noImage:                    String { s("no_image") }
+    var saveAndContinue:            String { s("save_and_continue") }
+    var regenerate:                 String { s("regenerate") }
+    var nameYourCard:               String { s("name_your_card") }
+    var whatDoesThisRepresent:      String { s("what_does_this_represent") }
+    var enterCardName:              String { s("enter_card_name") }
+    var readyToSave:                String { s("ready_to_save") }
+    var yourCardLooksAmazing:       String { s("your_card_looks_amazing") }
+    var loadingCategories:          String { s("loading_categories") }
+    var noCategoriesFound:          String { s("no_categories_found") }
+    var retry:                      String { s("retry") }
+    var saving:                     String { s("saving") }
+    var saveCardArrow:              String { s("save_card_arrow") }
+    var pleaseSelectCategory:       String { s("please_select_category") }
+    var createAnotherCard:          String { s("create_another_card") }
+    var goToBoard:                  String { s("go_to_board") }
+    var step1Label:                 String { s("step1_label") }
+    var step2Label:                 String { s("step2_label") }
+    var step3Label:                 String { s("step3_label") }
+    var step4Label:                 String { s("step4_label") }
+    var step5Label:                 String { s("step5_label") }
+    var categoryNameTitle:          String { s("category_name_title") }
+    var giveUniqueName:             String { s("give_unique_name") }
+    var enterTheName:               String { s("enter_the_name") }
+    var yourCards:                  String { s("your_cards") }
+    var selectCardsHint:            String { s("select_cards_hint") }
+    var skipArrow:                  String { s("skip_arrow") }
+    var almostDone:                 String { s("almost_done") }
+    var categoryLooksPerfect:       String { s("category_looks_perfect") }
+    var categoryCreated:            String { s("category_created") }
+    var categoryReady:              String { s("category_ready") }
+    var step1CatLabel:              String { s("step1_cat_label") }
+    var step2CatLabel:              String { s("step2_cat_label") }
+    var step3CatLabel:              String { s("step3_cat_label") }
+    var creating:                   String { s("creating") }
+    var createCategoryBtn:          String { s("create_category_btn") }
+    var createAnotherCategory:      String { s("create_another_category") }
+    var viewCategory:               String { s("view_category") }
+    var newCategory:                String { s("new_category") }
+
+    // MARK: - Gallery
+    var galleryTitle:           String { s("gallery_title") }
+    var allTab:                 String { s("all_tab") }
+    var favoritesTab:           String { s("favorites_tab") }
+    var categoriesTab:          String { s("categories_tab") }
+    var noCardsGallery:         String { s("no_cards_gallery") }
+    var createFirstCardHint:    String { s("create_first_card_hint") }
+    var noFavorites:            String { s("no_favorites") }
+    var addToFavoritesHint:     String { s("add_to_favorites_hint") }
+    var noCategoriesGallery:    String { s("no_categories_gallery") }
+    var createCategoryHint:     String { s("create_category_hint") }
+    var cardsSuffix:            String { s("cards_suffix") }
 
     // MARK: - Auth
-    var login:             String { t("Войти",                     kk: "Кіру",                   en: "Log In") }
-    var register:          String { t("Регистрация",               kk: "Тіркелу",                en: "Register") }
-    var email:             String { t("Email",                     kk: "Email",                  en: "Email") }
-    var password:          String { t("Пароль",                    kk: "Құпиясөз",               en: "Password") }
-    var name:              String { t("Имя",                       kk: "Аты",                    en: "Name") }
-    var forgotPassword:    String { t("Забыли пароль?",            kk: "Құпиясөзді ұмыттыңыз ба?", en: "Forgot password?") }
-    var continueBtn:       String { t("Продолжить →",             kk: "Жалғастыру →",           en: "Continue →") }
-    var cancel:            String { t("Отмена",                    kk: "Болдырмау",              en: "Cancel") }
-    var save:              String { t("Сохранить",                 kk: "Сақтау",                 en: "Save") }
-    var done:              String { t("Готово",                    kk: "Дайын",                  en: "Done") }
+    var welcomeBack:            String { s("welcome_back") }
+    var loginUnsuccessful:      String { s("login_unsuccessful") }
+    var signInToContinue:       String { s("sign_in_to_continue") }
+    var pleaseCheckCredentials: String { s("please_check_credentials") }
+    var incorrectEmailPassword: String { s("incorrect_email_password") }
+    var emailAddress:           String { s("email_address") }
+    var emailPlaceholder:       String { s("email_placeholder") }
+    var passwordPlaceholder:    String { s("password_placeholder") }
+    var rememberMe:             String { s("remember_me") }
+    var forgotPasswordQ:        String { s("forgot_password_q") }
+    var signInArrow:            String { s("sign_in_arrow") }
+    var tryAgainArrow:          String { s("try_again_arrow") }
+    var or:                     String { s("or") }
+    var dontHaveAccount:        String { s("dont_have_account") }
+    var signUpHere:             String { s("sign_up_here") }
+    var welcomeEmoji:           String { s("welcome_emoji") }
+    var emailAlreadyTaken:      String { s("email_already_taken") }
+    var letsGetToKnowYou:       String { s("lets_get_to_know_you") }
+    var firstName:              String { s("first_name") }
+    var enterNamePlaceholder:   String { s("enter_name_placeholder") }
+    var lastName:               String { s("last_name") }
+    var enterSurnamePlaceholder: String { s("enter_surname_placeholder") }
+    var continueArrow:          String { s("continue_arrow") }
+    var alreadyHaveAccount:     String { s("already_have_account") }
+    var loginHere:              String { s("login_here") }
+    var staySafe:               String { s("stay_safe") }
+    var lookingGoodAlmost:      String { s("looking_good_almost") }
+    var secureYourAccount:      String { s("secure_your_account") }
+    var createPasswordLabel:    String { s("create_password_label") }
+    var confirmPasswordLabel:   String { s("confirm_password_label") }
+    var repeatPasswordPlaceholder: String { s("repeat_password_placeholder") }
+    var almostDoneBanner:       String { s("almost_done_banner") }
+    var registrationFailed:     String { s("registration_failed") }
+    var creatingAccount:        String { s("creating_account") }
+    var resetPasswordTitle:     String { s("reset_password_title") }
+    var enterEmailReset:        String { s("enter_email_reset") }
+    var errorTitle:             String { s("error_title") }
+    var successTitle:           String { s("success_title") }
+    var resetInstructions:      String { s("reset_instructions") }
+    var sending:                String { s("sending") }
+    var sendResetLink:          String { s("send_reset_link") }
+    var backToLogin:            String { s("back_to_login") }
+    var login:                  String { s("login_btn") }
+    var register:               String { s("register_btn") }
+    var email:                  String { s("email_label") }
+    var password:               String { s("password_label") }
+    var name:                   String { s("name_label") }
+    var forgotPassword:         String { s("forgot_password_btn") }
+    var cancel:                 String { s("cancel_btn") }
+    var save:                   String { s("save_btn") }
+    var done:                   String { s("done_btn") }
+    var continueBtn:            String { s("continue_btn") }
 }
 
 // MARK: - AppRouter
@@ -136,7 +268,7 @@ struct AACCard: View {
         HStack {
             Text(card.word)                       // ← было card.text, теперь card.word
                 .font(.system(size: 15))
-                .foregroundColor(Color(hex: "1C3F6E"))
+                .foregroundColor(Color("AppTextPrimary"))
             Spacer()
             Button { onSpeak?() } label: {
                 Image(systemName: "speaker.wave.2")
@@ -146,7 +278,7 @@ struct AACCard: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.white)
+                .fill(Color("AppSurface"))
                 .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
         )
     }
@@ -159,7 +291,7 @@ enum AACButtonStyle {
         switch self {
         case .primary:   return Color(hex: "5BAECC")
         case .danger:    return Color(hex: "F87171")
-        case .secondary: return Color(hex: "9BB8CC")
+        case .secondary: return Color("AppTextHint")
         }
     }
 }
@@ -198,28 +330,15 @@ struct AACTextField: View {
     var body: some View {
         HStack {
             Image(systemName: icon)
-                .foregroundColor(Color(hex: "9BB8CC"))
+                .foregroundColor(Color("AppTextHint"))
             TextField(placeholder, text: $text)
                 .font(.system(size: 15))
         }
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(hex: "EEF5F9"))
+                .fill(Color("AppSurfaceSecondary"))
         )
     }
 }
 
-// MARK: - Localization Keys
-struct Gallery      { static var localized: String { "Gallery" } }
-struct Favorites    { static var localized: String { "Favourites" } }
-struct Folders      { static var localized: String { "Folders" } }
-struct RecentCards  { static var localized: String { "Recent Cards" } }
-struct CreateFolder { static var localized: String { "Create Folder" } }
-struct Profile      { static var localized: String { "Profile" } }
-struct Logout       { static var localized: String { "Logout" } }
-struct Theme        { static var localized: String { "Theme" } }
-struct Notifications { static var localized: String { "Notifications" } }
-struct Done         { static var localized: String { "Done" } }
-struct Language     { static var localized: String { "Language" } }
-struct Settings     { static var localized: String { "Settings" } }

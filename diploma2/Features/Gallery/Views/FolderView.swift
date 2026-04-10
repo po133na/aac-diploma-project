@@ -14,7 +14,7 @@ struct FolderDetailView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: "D6EEF5").ignoresSafeArea()
+                Color("AppBgAlt").ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: 16) {
@@ -35,7 +35,7 @@ struct FolderDetailView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { dismiss() } label: {
                         Image(systemName: "xmark")
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                     }
                 }
             }
@@ -56,7 +56,7 @@ private struct FolderCardRow: View {
                         .scaledToFill()
                 } else {
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color(hex: "C5D8F5"))
+                        .fill(Color("AppPlaceholderBg"))
                 }
             }
             .frame(width: 48, height: 48)
@@ -64,14 +64,14 @@ private struct FolderCardRow: View {
 
             Text(card.word)
                 .font(.system(size: 15))
-                .foregroundColor(Color(hex: "1C3F6E"))
+                .foregroundColor(Color("AppTextPrimary"))
 
             Spacer()
         }
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white)
+                .fill(Color("AppSurface"))
         )
         .task(id: card.id) {
             guard uiImage == nil, !card.imageBase64.isEmpty else { return }
@@ -90,15 +90,15 @@ struct EmptyFolderView: View {
         VStack(spacing: 16) {
             Image(systemName: "folder")
                 .font(.system(size: 80))
-                .foregroundColor(Color(hex: "6B8BAE"))
+                .foregroundColor(Color("AppTextSecondary"))
 
             Text("Папка пуста")
                 .font(.system(size: 20, weight: .medium))
-                .foregroundColor(Color(hex: "1C3F6E"))
+                .foregroundColor(Color("AppTextPrimary"))
 
             Text("Добавьте карточки в эту папку")
                 .font(.system(size: 14))
-                .foregroundColor(Color(hex: "6B8BAE"))
+                .foregroundColor(Color("AppTextSecondary"))
         }
         .padding(.vertical, 60)
     }

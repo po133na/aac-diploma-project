@@ -14,7 +14,7 @@ struct ProfileView: View {
     var body: some View {
         NavigationStack{
             ZStack {
-                Color(hex: "D6EEF5").ignoresSafeArea()
+                Color("AppBgAlt").ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
@@ -52,7 +52,7 @@ struct ProfileView: View {
                             icon: "rectangle.portrait.and.arrow.right.fill",
                             iconBg: Color(hex: "5BAECC"),
                             title: localization.logOut,
-                            titleColor: Color(hex: "1C3F6E")
+                            titleColor: Color("AppTextPrimary")
                         ) {
                             authViewModel.logout()
                         }
@@ -80,12 +80,12 @@ struct ProfileView: View {
             isPresented: $showDeleteConfirm,
             titleVisibility: .visible
         ) {
-            Button(localization.t("Удалить", kk: "Жою", en: "Delete"), role: .destructive) {
+            Button(localization.deleteAction, role: .destructive) {
                 // TODO: удаление аккаунта
             }
             Button(localization.cancel, role: .cancel) {}
         } message: {
-            Text(localization.t("Это действие нельзя отменить.", kk: "Бұл әрекетті болдырмау мүмкін емес.", en: "This action cannot be undone."))
+            Text(localization.cannotUndo)
         }
         .onAppear {
             Task { await viewModel.loadStats() }
@@ -132,21 +132,21 @@ private struct ProfileHeaderSection: View {
 
             Text(authViewModel.currentUser?.name ?? "Labuba Labuba")
                 .font(.system(size: 22, weight: .bold))
-                .foregroundColor(Color(hex: "1C3F6E"))
+                .foregroundColor(Color("AppTextPrimary"))
 
             Text(authViewModel.currentUser?.email ?? "your@email.com")
                 .font(.system(size: 14))
-                .foregroundColor(Color(hex: "6B8BAE"))
+                .foregroundColor(Color("AppTextSecondary"))
 
             NavigationLink(destination: EditProfileSheet()) {
-                Text("Edit profile")
+                Text(LocalizationManager.shared.editProfileBtn)
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(Color(hex: "1C3F6E"))
+                    .foregroundColor(Color("AppTextPrimary"))
                     .padding(.horizontal, 28)
                     .padding(.vertical, 10)
                     .background(
                         Capsule()
-                            .fill(Color.white)
+                            .fill(Color("AppSurface"))
                             .shadow(color: .black.opacity(0.07), radius: 6, x: 0, y: 2)
                     )
             }
@@ -165,10 +165,10 @@ private struct SectionHeader: View {
         HStack(spacing: 6) {
             Image(systemName: icon)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(Color(hex: "6B8BAE"))
+                .foregroundColor(Color("AppTextSecondary"))
             Text(title)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(Color(hex: "6B8BAE"))
+                .foregroundColor(Color("AppTextSecondary"))
                 .tracking(0.8)
             Spacer()
         }
@@ -202,18 +202,19 @@ private struct ActivityCard: View {
     }
 
     var body: some View {
+        let l = LocalizationManager.shared
         VStack(alignment: .leading, spacing: 12) {
-            Text("This week")
+            Text(l.thisWeek)
                 .font(.system(size: 14))
-                .foregroundColor(Color(hex: "6B8BAE"))
+                .foregroundColor(Color("AppTextSecondary"))
 
             HStack(alignment: .bottom) {
                 // Число + подпись
                 HStack(alignment: .lastTextBaseline, spacing: 6) {
                     Text("\(cardsUsed)")
                         .font(.system(size: 42, weight: .bold))
-                        .foregroundColor(Color(hex: "1C3F6E"))
-                    Text("cards used")
+                        .foregroundColor(Color("AppTextPrimary"))
+                    Text(l.cardsUsed)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(Color(hex: "5BAECC"))
                         .padding(.bottom, 4)
@@ -240,26 +241,26 @@ private struct ActivityCard: View {
                     Circle()
                         .fill(Color(hex: "F5A623"))
                         .frame(width: 8, height: 8)
-                    Text("\(streak)-day streak")
+                    Text("\(streak) \(l.dayStreak)")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(Color(hex: "6B8BAE"))
+                        .foregroundColor(Color("AppTextSecondary"))
                 }
                 
                 HStack(spacing: 6) {
                     Circle()
                         .fill(Color(hex: "A78BFA"))
                         .frame(width: 8, height: 8)
-                    Text("\(totalCards) total cards")
+                    Text("\(totalCards) \(l.totalCards)")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(Color(hex: "6B8BAE"))
+                        .foregroundColor(Color("AppTextSecondary"))
                 }
             }
 
             Divider()
-                .background(Color(hex: "E5EEF5"))
+                .background(Color("AppBorderLight"))
 
             NavigationLink(destination: FullStatsView(stats: viewModel.stats)) {
-                Text("See full stats ›")
+                Text(l.seeFullStats)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(Color(hex: "5BAECC"))
             }
@@ -269,7 +270,7 @@ private struct ActivityCard: View {
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white)
+                .fill(Color("AppSurface"))
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
     }
@@ -299,7 +300,7 @@ private struct LanguagePickerCard: View {
                         Text(flag).font(.system(size: 22))
                         Text(name)
                             .font(.system(size: 15, weight: isSelected ? .semibold : .regular))
-                            .foregroundColor(Color(hex: "1C3F6E"))
+                            .foregroundColor(Color("AppTextPrimary"))
                         Spacer()
                         if isSelected {
                             Image(systemName: "checkmark.circle.fill")
@@ -318,7 +319,7 @@ private struct LanguagePickerCard: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white)
+                .fill(Color("AppSurface"))
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
     }
@@ -380,7 +381,7 @@ private struct SettingsAccordionCard: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white)
+                .fill(Color("AppSurface"))
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
     }
@@ -404,18 +405,18 @@ private struct AccordionRow: View {
                             .frame(width: 34, height: 34)
                         Image(systemName: section.icon)
                             .font(.system(size: 15))
-                            .foregroundColor(Color(hex: "1C3F6E"))
+                            .foregroundColor(Color("AppTextPrimary"))
                     }
 
                     Text(section.localizedTitle(localization))
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(Color(hex: "1C3F6E"))
+                        .foregroundColor(Color("AppTextPrimary"))
 
                     Spacer()
 
                     Image(systemName: "chevron.down")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(Color(hex: "9BB8CC"))
+                        .foregroundColor(Color("AppTextHint"))
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
                         .animation(.easeInOut(duration: 0.2), value: isExpanded)
                 }
@@ -469,12 +470,13 @@ private struct AccessibilitySettings: View {
 
 private struct SupportSettings: View {
     var body: some View {
+        let l = LocalizationManager.shared
         VStack(spacing: 0) {
-            SupportLinkRow(label: "Help Center", icon: "questionmark.circle")
+            SupportLinkRow(label: l.helpCenter, icon: "questionmark.circle")
             Divider().padding(.leading, 16)
-            SupportLinkRow(label: "Privacy Policy", icon: "lock.shield")
+            SupportLinkRow(label: l.privacyPolicy, icon: "lock.shield")
             Divider().padding(.leading, 16)
-            SupportLinkRow(label: "Version 1.0.0", icon: "info.circle")
+            SupportLinkRow(label: l.version, icon: "info.circle")
         }
         .padding(.bottom, 4)
     }
@@ -488,7 +490,7 @@ private struct ToggleRow: View {
         HStack {
             Text(label)
                 .font(.system(size: 14))
-                .foregroundColor(Color(hex: "1C3F6E"))
+                .foregroundColor(Color("AppTextPrimary"))
             Spacer()
             Toggle("", isOn: $isOn)
                 .tint(Color(hex: "5BAECC"))
@@ -507,11 +509,11 @@ private struct SupportLinkRow: View {
         HStack {
             Text(label)
                 .font(.system(size: 14))
-                .foregroundColor(Color(hex: "1C3F6E"))
+                .foregroundColor(Color("AppTextPrimary"))
             Spacer()
             Image(systemName: icon)
                 .font(.system(size: 14))
-                .foregroundColor(Color(hex: "9BB8CC"))
+                .foregroundColor(Color("AppTextHint"))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -549,7 +551,7 @@ struct ActionRow: View {
             .padding(.vertical, 14)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white)
+                    .fill(Color("AppSurface"))
                     .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
             )
         }
@@ -564,12 +566,13 @@ struct EditProfileSheet: View {
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
+        let l = LocalizationManager.shared
         ZStack {
-            Color(hex: "D6EEF5").ignoresSafeArea()
-            Text("Edit Profile — coming soon")
-                .foregroundColor(Color(hex: "6B8BAE"))
+            Color("AppBgAlt").ignoresSafeArea()
+            Text(l.editProfileComingSoon)
+                .foregroundColor(Color("AppTextSecondary"))
         }
-        .navigationTitle("Edit Profile")
+        .navigationTitle(l.editProfile)
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -580,39 +583,40 @@ struct FullStatsView: View {
     let stats: UserStats?
     
     var body: some View {
+        let l = LocalizationManager.shared
         ZStack {
-            Color(hex: "D6EEF5").ignoresSafeArea()
-            
+            Color("AppBgAlt").ignoresSafeArea()
+
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
                     // Карточка общей статистики
                     StatsCard(
-                        title: "Overview",
+                        title: l.overview,
                         items: [
-                            ("Total Cards", "\(stats?.totalCards ?? 0)"),
-                            ("Cards This Week", "\(stats?.thisWeekCards ?? 0)"),
-                            ("Current Streak", "\(stats?.currentStreak ?? 0) days"),
-                            ("Total Card Uses", "\(stats?.totalCardUses ?? 0)"),
-                            ("Total Phrases", "\(stats?.totalPhrases ?? 0)"),
-                            ("Total Phrase Uses", "\(stats?.totalPhraseUses ?? 0)")
+                            (l.totalCardsStat, "\(stats?.totalCards ?? 0)"),
+                            (l.cardsThisWeek, "\(stats?.thisWeekCards ?? 0)"),
+                            (l.currentStreak, "\(stats?.currentStreak ?? 0)"),
+                            (l.totalCardUses, "\(stats?.totalCardUses ?? 0)"),
+                            (l.totalPhrases, "\(stats?.totalPhrases ?? 0)"),
+                            (l.totalPhraseUses, "\(stats?.totalPhraseUses ?? 0)")
                         ]
                     )
-                    
+
                     // Top Cards
                     if let topCards = stats?.topCards, !topCards.isEmpty {
                         MostUsedCardsCard(topCards: Array(topCards.prefix(5)))
                     }
-                    
+
                     // Top Phrases
                     if let topPhrases = stats?.topPhrases, !topPhrases.isEmpty {
                         StatsCard(
-                            title: "Most Used Phrases",
+                            title: l.mostUsedPhrases,
                             items: topPhrases.prefix(5).map { phrase in
-                                ("\(phrase.name)", "\(phrase.usageCount) uses")
+                                ("\(phrase.name)", "\(phrase.usageCount) \(l.uses)")
                             }
                         )
                     }
-                    
+
                     // Weekly Chart
                     if let weeklyData = stats?.weeklyData, !weeklyData.isEmpty {
                         WeeklyChartView(data: weeklyData)
@@ -622,7 +626,7 @@ struct FullStatsView: View {
                 .padding(.vertical, 20)
             }
         }
-        .navigationTitle("Statistics")
+        .navigationTitle(l.statistics)
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -635,7 +639,7 @@ struct StatsCard: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(.system(size: 16, weight: .bold))
-                .foregroundColor(Color(hex: "1C3F6E"))
+                .foregroundColor(Color("AppTextPrimary"))
                 .padding(.horizontal, 20)
             
             VStack(spacing: 0) {
@@ -643,7 +647,7 @@ struct StatsCard: View {
                     HStack {
                         Text(item.0)
                             .font(.system(size: 14))
-                            .foregroundColor(Color(hex: "1C3F6E"))
+                            .foregroundColor(Color("AppTextPrimary"))
                         
                         Spacer()
                         
@@ -661,7 +665,7 @@ struct StatsCard: View {
             }
             .background(
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(Color.white)
+                    .fill(Color("AppSurface"))
                     .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
             )
             .padding(.horizontal, 16)
@@ -675,10 +679,11 @@ struct MostUsedCardsCard: View {
     let topCards: [TopCard]
 
     var body: some View {
+        let l = LocalizationManager.shared
         VStack(alignment: .leading, spacing: 12) {
-            Text("Most Used Cards")
+            Text(l.mostUsedCards)
                 .font(.system(size: 16, weight: .bold))
-                .foregroundColor(Color(hex: "1C3F6E"))
+                .foregroundColor(Color("AppTextPrimary"))
                 .padding(.horizontal, 20)
 
             VStack(spacing: 0) {
@@ -692,14 +697,14 @@ struct MostUsedCardsCard: View {
                             }
                             Text(card.word)
                                 .font(.system(size: 14))
-                                .foregroundColor(Color(hex: "1C3F6E"))
+                                .foregroundColor(Color("AppTextPrimary"))
                             Spacer()
-                            Text("\(card.usageCount) uses")
+                            Text("\(card.usageCount) \(l.uses)")
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(Color(hex: "5BAECC"))
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 11))
-                                .foregroundColor(Color(hex: "9BB8CC"))
+                                .foregroundColor(Color("AppTextHint"))
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
@@ -713,7 +718,7 @@ struct MostUsedCardsCard: View {
             }
             .background(
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(Color.white)
+                    .fill(Color("AppSurface"))
                     .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
             )
             .padding(.horizontal, 16)
@@ -731,7 +736,7 @@ struct TopCardDetailView: View {
 
     var body: some View {
         ZStack {
-            Color(hex: "D6EEF5").ignoresSafeArea()
+            Color("AppBgAlt").ignoresSafeArea()
             VStack(spacing: 24) {
                 Spacer()
                 if isLoading {
@@ -747,30 +752,30 @@ struct TopCardDetailView: View {
                                 .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
                         } else {
                             RoundedRectangle(cornerRadius: 20)
-                                .fill(Color(hex: "C5D8F5"))
+                                .fill(Color("AppPlaceholderBg"))
                                 .frame(width: 200, height: 200)
                                 .overlay(
                                     Image(systemName: "photo")
                                         .font(.system(size: 40))
-                                        .foregroundColor(Color(hex: "9BB8CC"))
+                                        .foregroundColor(Color("AppTextHint"))
                                 )
                         }
 
                         Text(card.word)
                             .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
+                            .foregroundColor(Color("AppTextPrimary"))
 
                         HStack(spacing: 6) {
                             Image(systemName: "hand.tap.fill")
                                 .foregroundColor(Color(hex: "5BAECC"))
-                            Text("Used \(card.usageCount) times")
+                            Text("\(LocalizationManager.shared.uses): \(card.usageCount)")
                                 .font(.system(size: 16))
-                                .foregroundColor(Color(hex: "6B8BAE"))
+                                .foregroundColor(Color("AppTextSecondary"))
                         }
                         .padding(.horizontal, 20)
                         .padding(.vertical, 10)
                         .background(
-                            Capsule().fill(Color.white)
+                            Capsule().fill(Color("AppSurface"))
                                 .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2)
                         )
 
@@ -781,7 +786,7 @@ struct TopCardDetailView: View {
                         } label: {
                             HStack(spacing: 8) {
                                 Image(systemName: "speaker.wave.2.fill")
-                                Text("Speak")
+                                Text(LocalizationManager.shared.speak)
                                     .font(.system(size: 16, weight: .semibold))
                             }
                             .foregroundColor(.white)
@@ -794,7 +799,7 @@ struct TopCardDetailView: View {
                 Spacer()
             }
         }
-        .navigationTitle("Card Detail")
+        .navigationTitle(LocalizationManager.shared.cardDetail)
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if let fetched = try? await CardService.shared.getCard(id: card.id) {
@@ -817,10 +822,11 @@ struct WeeklyChartView: View {
     }
     
     var body: some View {
+        let l = LocalizationManager.shared
         VStack(alignment: .leading, spacing: 12) {
-            Text("Weekly Activity")
+            Text(l.weeklyActivity)
                 .font(.system(size: 16, weight: .bold))
-                .foregroundColor(Color(hex: "1C3F6E"))
+                .foregroundColor(Color("AppTextPrimary"))
             
             HStack(alignment: .bottom, spacing: 8) {
                 ForEach(data.indices, id: \.self) { index in
@@ -833,7 +839,7 @@ struct WeeklyChartView: View {
                         
                         Text(dayLabel(for: index))
                             .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "6B8BAE"))
+                            .foregroundColor(Color("AppTextSecondary"))
                     }
                 }
             }
@@ -842,7 +848,7 @@ struct WeeklyChartView: View {
             .padding(.horizontal, 8)
             .background(
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(Color.white)
+                    .fill(Color("AppSurface"))
                     .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
             )
         }
