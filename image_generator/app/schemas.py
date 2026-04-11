@@ -125,13 +125,13 @@ class CategoryCoverGenerateRequest(BaseModel):
 # === Карточки ===
 class CardCreate(BaseModel):
     word: str
-    language: Literal["ru", "kk"] = "ru"
+    language: Literal["ru", "kk", "en"] = "ru"
     category_id: Optional[int] = None
 
 
 class CardUpload(BaseModel):
     word: str
-    language: Literal["ru", "kk"] = "ru"
+    language: Literal["ru", "kk", "en"] = "ru"
     category_id: Optional[int] = None
     image_base64: str  # base64 фото с камеры/галереи
 
@@ -145,7 +145,7 @@ class CardGenerateResponse(BaseModel):
 
 class CardSave(BaseModel):
     word: str
-    language: Literal["ru", "kk"] = "ru"
+    language: Literal["ru", "kk", "en"] = "ru"
     translated_word: str
     image_base64: str
     category_id: Optional[int] = None

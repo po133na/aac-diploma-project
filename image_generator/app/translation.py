@@ -7,6 +7,8 @@ async def translate_to_english(text: str, source_lang: str) -> str:
     Переводит текст на английский.
     source_lang: "ru" для русского, "kk" для казахского
     """
+    if source_lang == "en":
+        return text
     try:
         translator = GoogleTranslator(source=source_lang, target="en")
         result = await asyncio.to_thread(translator.translate, text)
