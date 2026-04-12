@@ -4,10 +4,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime, timedelta, date, timezone
 from io import BytesIO
+from pathlib import Path
 import asyncio
 import base64
 import secrets
 from PIL import Image
+
+SYSTEM_CARDS_DIR = Path(__file__).parent / "system_cards"
+
+
+def _load_card_image(word_en: str) -> str:
+    """Загружает изображение из system_cards по английскому слову, возвращает base64."""
+    path = SYSTEM_CARDS_DIR / f"{word_en.lower()}.jpeg"
+    if path.exists():
+        return base64.b64encode(path.read_bytes()).decode("utf-8")
+    return None
 
 from huggingface_hub import InferenceClient
 
@@ -147,6 +158,7 @@ async def create_default_categories(session: AsyncSession):
                 ("Jump", "Прыгать", "Секіру", (160, 220, 220)),
             ]
             for word_en, word_ru, word_kk, color in basics_words:
+                image = _load_card_image(word_en) or _make_card_image(color)
                 session.add(Card(
                     word=word_en,
                     language="en",
@@ -154,7 +166,7 @@ async def create_default_categories(session: AsyncSession):
                     word_en=word_en,
                     word_ru=word_ru,
                     word_kk=word_kk,
-                    image_base64=_make_card_image(color),
+                    image_base64=image,
                     category_id=basics_category.id,
                     user_id=None,
                 ))
