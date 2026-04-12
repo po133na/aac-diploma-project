@@ -189,6 +189,11 @@ class TTSRequest(BaseModel):
     language: Literal["ru", "kk", "en"] = "ru"
 
 
+class PhraseTTSRequest(BaseModel):
+    words: list[str]
+    language: Literal["ru", "kk", "en"] = "ru"
+
+
 class TTSResponse(BaseModel):
     audio_base64: str
     format: str = "mp3"

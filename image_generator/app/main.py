@@ -18,7 +18,7 @@ from app.schemas import (
     CategoryCreate, CategoryResponse, CategoryListResponse,
     CategoryCoverUpload, CategoryCoverGenerateRequest, CategoryAddCardsRequest,
     CardCreate, CardUpload, CardGenerateResponse, CardSave, CardUpdate, CardResponse, CardListResponse,
-    TTSRequest, TTSResponse,
+    TTSRequest, TTSResponse, PhraseTTSRequest,
     PhraseCreate, PhraseResponse, PhraseListResponse, PhraseWithCardsResponse,
     ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest, MessageResponse,
     SyncResponse, DeletedItemResponse
@@ -977,6 +977,40 @@ async def speak(
     """Преобразовать текст в речь"""
     try:
         audio_base64 = await text_to_speech(tts_data.text, tts_data.language)
+        return TTSResponse(audio_base64=audio_base64)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/tts/phrase", response_model=TTSResponse)
+async def speak_phrase(
+    data: PhraseTTSRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Исправить грамматику набора слов с помощью Gemini и озвучить"""
+    if not settings.GOOGLE_API_KEY:
+        raise HTTPException(status_code=503, detail="Google API key not configured")
+
+    lang_names = {"ru": "Russian", "kk": "Kazakh", "en": "English"}
+    lang_name = lang_names[data.language]
+    raw = " ".join(data.words)
+
+    prompt = (
+        f"Fix the grammar of the following {lang_name} words into a natural sentence. "
+        f"Return only the corrected sentence, nothing else.\n\n{raw}"
+    )
+
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=settings.GOOGLE_API_KEY)
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        response = await asyncio.to_thread(model.generate_content, prompt)
+        corrected = response.text.strip()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gemini error: {e}")
+
+    try:
+        audio_base64 = await text_to_speech(corrected, data.language)
         return TTSResponse(audio_base64=audio_base64)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
