@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, delete
 from datetime import datetime, timedelta, date, timezone
 from io import BytesIO
 from pathlib import Path
@@ -985,6 +985,8 @@ async def delete_card(
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
     
+    await session.execute(delete(DailyCardLog).where(DailyCardLog.card_id == card_id))
+    await session.execute(delete(UserCardUsage).where(UserCardUsage.card_id == card_id))
     session.add(DeletedItem(entity_type="card", entity_id=card_id, user_id=current_user.id))
     await session.delete(card)
     await session.commit()
