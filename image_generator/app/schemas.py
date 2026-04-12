@@ -122,6 +122,10 @@ class CategoryCoverGenerateRequest(BaseModel):
     prompt: Optional[str] = None  # если None — генерируется по названию категории
 
 
+class CategoryAddCardsRequest(BaseModel):
+    card_ids: list[int]
+
+
 # === Карточки ===
 class CardCreate(BaseModel):
     word: str

@@ -16,7 +16,7 @@ from app.schemas import (
     UserCreate, UserLogin, UserResponse, UserUpdate, UserStatsResponse, Token,
     UserSettingsResponse, UserSettingsUpdate,
     CategoryCreate, CategoryResponse, CategoryListResponse,
-    CategoryCoverUpload, CategoryCoverGenerateRequest,
+    CategoryCoverUpload, CategoryCoverGenerateRequest, CategoryAddCardsRequest,
     CardCreate, CardUpload, CardGenerateResponse, CardSave, CardUpdate, CardResponse, CardListResponse,
     TTSRequest, TTSResponse,
     PhraseCreate, PhraseResponse, PhraseListResponse, PhraseWithCardsResponse,
@@ -535,6 +535,38 @@ async def delete_category(
     return {"status": "deleted", "id": category_id}
 
 
+@app.post("/categories/{category_id}/cards", response_model=dict)
+async def add_cards_to_category(
+    category_id: int,
+    body: CategoryAddCardsRequest,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Переназначить список карточек в указанную категорию."""
+    result = await session.execute(
+        select(Category).where(
+            Category.id == category_id,
+            Category.user_id == current_user.id
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    cards_result = await session.execute(
+        select(Card).where(
+            Card.id.in_(body.card_ids),
+            Card.user_id == current_user.id
+        )
+    )
+    cards = cards_result.scalars().all()
+
+    for card in cards:
+        card.category_id = category_id
+
+    await session.commit()
+    return {"updated": len(cards)}
+
+
 @app.post("/categories/{category_id}/cover", response_model=CategoryResponse)
 async def upload_category_cover(
     category_id: int,
@@ -593,25 +625,32 @@ async def generate_category_cover(
 
 # ==================== КАРТОЧКИ ====================
 
-async def _get_or_create_generated_category(session: AsyncSession, user_id: int) -> Category:
-    """Возвращает категорию 'Generated' пользователя, создаёт если нет."""
+async def _get_or_create_unassigned_category(session: AsyncSession, user_id: int) -> Category:
+    """Возвращает категорию 'Unassigned' пользователя, создаёт если нет."""
     result = await session.execute(
         select(Category).where(
-            Category.name_en == "Generated",
+            Category.name_en.in_(["Unassigned", "Generated"]),
             Category.user_id == user_id
         )
     )
     category = result.scalar_one_or_none()
     if not category:
         category = Category(
-            name="Сгенерированные",
-            name_kk="Жасалған",
-            name_en="Generated",
-            icon="🤖",
+            name="Без категории",
+            name_kk="Санатсыз",
+            name_en="Unassigned",
+            icon="📋",
             user_id=user_id,
         )
         session.add(category)
         await session.flush()
+    else:
+        # Переименуем старую Generated в Unassigned
+        if category.name_en == "Generated":
+            category.name = "Без категории"
+            category.name_kk = "Санатсыз"
+            category.name_en = "Unassigned"
+            category.icon = "📋"
     return category
 
 
@@ -627,7 +666,7 @@ async def generate_card(
         translated = await translate_to_english(card_data.word, card_data.language)
         image_base64 = await _generate_image(f"{translated}, {IMAGE_STYLE_PROMPT}")
 
-        generated_cat = await _get_or_create_generated_category(session, current_user.id)
+        generated_cat = await _get_or_create_unassigned_category(session, current_user.id)
         target_category_id = card_data.category_id if card_data.category_id else generated_cat.id
 
         card = Card(
