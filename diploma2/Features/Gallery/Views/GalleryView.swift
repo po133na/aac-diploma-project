@@ -194,6 +194,7 @@ struct GalleryView: View {
 struct CardGridItem: View {
     let card: Card
     @ObservedObject var viewModel: GalleryViewModel
+    @ObservedObject private var l = LocalizationManager.shared
     
     var body: some View {
         VStack(spacing: 8) {
@@ -217,7 +218,7 @@ struct CardGridItem: View {
             
             // Слово и кнопки
             VStack(spacing: 6) {
-                Text(card.word)
+                Text(card.localizedWord(language: l.currentLanguage))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(Color("AppTextPrimary"))
                     .lineLimit(1)

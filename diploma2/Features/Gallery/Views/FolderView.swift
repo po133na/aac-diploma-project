@@ -45,6 +45,7 @@ struct FolderDetailView: View {
 
 private struct FolderCardRow: View {
     let card: Card
+    @ObservedObject private var l = LocalizationManager.shared
     @State private var uiImage: UIImage? = nil
 
     var body: some View {
@@ -62,7 +63,7 @@ private struct FolderCardRow: View {
             .frame(width: 48, height: 48)
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
-            Text(card.word)
+            Text(card.localizedWord(language: l.currentLanguage))
                 .font(.system(size: 15))
                 .foregroundColor(Color("AppTextPrimary"))
 

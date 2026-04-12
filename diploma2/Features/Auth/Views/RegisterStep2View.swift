@@ -54,8 +54,13 @@ struct RegisterStep2View: View {
                                 StepBadge(current: 2, total: 2)
                             }
 
-                            // Аватар — зелёный на шаге 2
-                            AuthAvatar(color: AuthColors.avatarGreen)
+                            Image("onboarding_image")
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 170, height: 170)
+                                .clipShape(Circle())
+                                .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 4)
+                                .padding(.bottom, 40)
 
                             // Заголовок
                             VStack(spacing: 6) {

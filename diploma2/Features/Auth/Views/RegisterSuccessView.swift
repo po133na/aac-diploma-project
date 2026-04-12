@@ -10,7 +10,8 @@
 import SwiftUI
 
 struct RegisterSuccessView: View {
-    var onContinue: () -> Void   // → переход на MainTabView
+    var onContinue: () -> Void
+    @ObservedObject private var l = LocalizationManager.shared
 
     var body: some View {
         ZStack {
@@ -19,23 +20,23 @@ struct RegisterSuccessView: View {
             AuthCard {
                 VStack(spacing: 20) {
 
-                    // Back button (без step badge)
-                    HStack {
-                        // На этом экране back скрыт — пользователь уже зарегистрирован
-                        Spacer()
+                    HStack { Spacer() }
+
+                    ZStack {
+                        AuthAvatar(color: AuthColors.avatarGreen)
+                            .padding(.top, 12)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.top, 12)
                     }
 
-                    // Аватар — зелёный (успех)
-                    AuthAvatar(color: AuthColors.avatarGreen)
-                        .padding(.top, 12)
-
-                    // Заголовок
                     VStack(spacing: 8) {
-                        Text("You're in !")
+                        Text(l.youreIn)
                             .font(.system(size: 28, weight: .bold))
                             .foregroundColor(AuthColors.titleText)
 
-                        Text("Account created successfully.\nWelcome to Unim!")
+                        Text(l.accountCreated)
                             .font(.system(size: 14))
                             .foregroundColor(AuthColors.subtitleText)
                             .multilineTextAlignment(.center)
@@ -44,12 +45,8 @@ struct RegisterSuccessView: View {
 
                     Spacer().frame(height: 40)
 
-                    // Hint баннер
-                    AuthHintBanner(text: "✨ Almost done! One more click! 🎉")
-
-                    // Кнопка — зелёная
                     AuthButton(
-                        title: "Continue →",
+                        title: l.continueArrow,
                         color: AuthColors.buttonGreen
                     ) {
                         onContinue()

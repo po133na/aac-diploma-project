@@ -237,6 +237,17 @@ final class LocalizationManager: ObservableObject {
     var save:                   String { s("save_btn") }
     var done:                   String { s("done_btn") }
     var continueBtn:            String { s("continue_btn") }
+
+    // MARK: - Register Success
+    var youreIn:                String { s("youre_in") }
+    var accountCreated:         String { s("account_created") }
+
+    // MARK: - Category / Card Actions
+    var deleteCategoryBtn:      String { s("delete_category_btn") }
+    var renameCard:             String { s("rename_card") }
+    var cardNamePlaceholder:    String { s("card_name_placeholder") }
+    var deleteCard:             String { s("delete_card") }
+    var editCard:               String { s("edit_card") }
 }
 
 // MARK: - AppRouter

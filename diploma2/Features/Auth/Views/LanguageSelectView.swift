@@ -49,6 +49,11 @@ struct LanguageSelectView: View {
                 }
 
                 Spacer()
+                Text("Unim")
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundColor(Color(hex: "1C3F6E"))
+                    .padding(.top, 8)
+                Spacer()
             }
         }
     }

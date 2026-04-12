@@ -35,7 +35,9 @@ struct SpeakEasyApp: App {
                 }
                 .task {
                     if authViewModel.isAuthenticated && network.isConnected {
-                        await SyncService.shared.sync()
+                        Task.detached(priority: .background) {
+                            await SyncService.shared.sync()
+                        }
                     }
                 }
                 // Deep link из виджета: aac://speak?word=хочу

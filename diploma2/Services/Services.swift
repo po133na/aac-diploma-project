@@ -71,10 +71,15 @@ final class CardService {
         try await client.requestVoid(path: "/cards/\(id)", method: "DELETE")
     }
 
-    // Генерация и сохранение в "Generated" категорию (POST /cards/generate)
+    // Генерация и сохранение в "Unassigned" категорию (POST /cards/generate)
     func generateCard(word: String, language: String, categoryId: Int? = nil) async throws -> Card {
         let body = CardCreate(word: word, language: language, categoryId: categoryId, style: nil)
         return try await client.request(path: "/cards/generate", method: "POST", body: body)
+    }
+
+    // Перегенерация изображения карточки по тому же слову
+    func regenerateCard(id: Int) async throws -> Card {
+        return try await client.request(path: "/cards/\(id)/regenerate", method: "POST")
     }
 }
 
@@ -120,6 +125,17 @@ final class CategoryService {
             path: "/categories/\(categoryId)/cover/generate",
             method: "POST",
             body: Body(prompt: prompt)
+        )
+    }
+
+    // Bulk переназначение карточек в категорию
+    func assignCards(categoryId: Int, cardIds: [Int]) async throws {
+        struct Body: Encodable { let card_ids: [Int] }
+        let bodyData = try JSONEncoder().encode(Body(card_ids: cardIds))
+        try await client.requestVoidWithBody(
+            path: "/categories/\(categoryId)/cards",
+            method: "POST",
+            bodyData: bodyData
         )
     }
 }
@@ -201,6 +217,26 @@ final class TTSService: ObservableObject {
         } catch {
             // Fallback: AVFoundation (офлайн)
             speakLocally(text: text, language: language)
+        }
+    }
+
+    // Исправить грамматику набора слов через Gemini и озвучить (/tts/phrase)
+    func speakWords(words: [String], language: AppLanguage) async {
+        guard !words.isEmpty else { return }
+        isSpeaking = true
+        defer { isSpeaking = false }
+
+        struct Body: Encodable { let words: [String]; let language: String }
+        do {
+            let response: TTSResponse = try await client.request(
+                path: "/tts/phrase",
+                method: "POST",
+                body: Body(words: words, language: language.rawValue)
+            )
+            await playAudioBase64(response.audioBase64)
+        } catch {
+            // Fallback: объединяем слова и озвучиваем локально
+            speakLocally(text: words.joined(separator: " "), language: language)
         }
     }
 

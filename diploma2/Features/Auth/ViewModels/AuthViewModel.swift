@@ -45,7 +45,16 @@ final class AuthViewModel: ObservableObject {
             authService.logout()
         }
     }
-
+    func updateProfile(name: String) async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let updated = try await authService.updateProfile(name: name)
+            currentUser = updated
+        } catch {
+            loginError = error.localizedDescription
+        }
+    }
     // MARK: - Language
 
     func selectLanguage(_ language: AppLanguage) {

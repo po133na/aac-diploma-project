@@ -122,9 +122,8 @@ final class GalleryViewModel: ObservableObject {
 
     func speakCard(_ card: Card) {
         Task {
-            let langRaw = UserDefaults.standard.string(forKey: "preferred_language") ?? "ru"
-            let lang = AppLanguage(rawValue: langRaw) ?? .russian
-            await TTSService.shared.speak(text: card.word, language: lang)
+            let lang = LocalizationManager.shared.currentLanguage
+            await TTSService.shared.speak(text: card.localizedWord(language: lang), language: lang)
         }
     }
 }

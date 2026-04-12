@@ -64,7 +64,9 @@ final class HomeViewModel: ObservableObject {
     // MARK: - Computed
 
     var sentenceText: String {
-        let parts = tokens.map(\.word) + (typedText.trimmingCharacters(in: .whitespaces).isEmpty ? [] : [typedText.trimmingCharacters(in: .whitespaces)])
+        let lang = LocalizationManager.shared.currentLanguage
+        let parts = tokens.map { $0.localizedWord(language: lang) }
+            + (typedText.trimmingCharacters(in: .whitespaces).isEmpty ? [] : [typedText.trimmingCharacters(in: .whitespaces)])
         return parts.joined(separator: " ")
     }
     var wordCount: Int { selectedCards.count }
@@ -78,10 +80,9 @@ final class HomeViewModel: ObservableObject {
         let cachedCards = cache.loadCards()
         if !cachedCards.isEmpty { recentCards = Array(cachedCards.prefix(6)) }
 
-        // 2. В фоне: синкаем с сервером если есть сеть
+        // 2. Загружаем свежие данные с сервера (синк уже запускается при старте приложения)
         if network.isConnected {
             Task {
-                await syncService.sync()
                 await loadCategories()
                 await loadRecentCards()
             }
@@ -127,7 +128,8 @@ final class HomeViewModel: ObservableObject {
         do {
             let all = try await cardService.getCards()
             recentCards = Array(all.prefix(6))
-            cache.saveCards(all)
+            // Сохраняем в кеш отдельной задачей, чтобы не блокировать главный поток
+            Task { [weak self] in self?.cache.saveCards(all) }
         } catch {
             recentCards = Array(cache.loadCards().prefix(6))
         }
@@ -168,7 +170,9 @@ final class HomeViewModel: ObservableObject {
         }
         tokens.append(.card(card, UUID()))
         if UserDefaults.standard.bool(forKey: "auto_speak") {
-            Task { await ttsService.speak(text: card.word, language: detectLanguage(card.word)) }
+            let lang = LocalizationManager.shared.currentLanguage
+            let w = card.localizedWord(language: lang)
+            Task { await ttsService.speak(text: w, language: lang) }
         }
         if network.isConnected {
             Task { _ = try? await cardService.useCard(id: card.id) }
@@ -198,12 +202,12 @@ final class HomeViewModel: ObservableObject {
     }
 
     func speakSentence() {
-        let text = sentenceText.trimmingCharacters(in: .whitespaces)
-        guard !text.isEmpty else { return }
-        Task {
-            let lang = detectLanguage(text)
-            await ttsService.speak(text: text, language: lang)
-        }
+        let lang = LocalizationManager.shared.currentLanguage
+        var words = tokens.map { $0.localizedWord(language: lang) }
+        let typed = typedText.trimmingCharacters(in: .whitespaces)
+        if !typed.isEmpty { words.append(typed) }
+        guard !words.isEmpty else { return }
+        Task { await ttsService.speakWords(words: words, language: lang) }
     }
 
     private func detectLanguage(_ text: String) -> AppLanguage {
@@ -286,6 +290,7 @@ final class HomeViewModel: ObservableObject {
         do {
             let updated = try await cardService.updateCard(
                 id: card.id,
+                word: word,
                 isFavorite: nil,
                 categoryId: categoryId
             )

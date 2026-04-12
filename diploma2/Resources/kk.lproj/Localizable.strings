@@ -14,7 +14,7 @@
 "recent_cards" = "Соңғы карталар";
 "view_all" = "Барлығын қарау >";
 "try_again" = "Қайталап көру";
-"no_cards" = "Карталар жоқ";
+"no_cards" = "Карталар әзірше жоқ";
 "speak_again" = "Қайта айту";
 "or_type_text" = "немесе мәтін енгізіңіз";
 "type_to_speak" = "Сөз жазыңыз...";
@@ -85,17 +85,17 @@
 "choose_gallery_emoji" = "Галереядан таңдау 🖼️";
 "pick_from_library" = "Фотогалереядан таңдау";
 "describe_your_image" = "Суретіңізді сипаттаңыз";
-"tell_ai_what_you_want" = "ИИ-ге не көргіңіз келетінін айтыңыз";
+"tell_ai_what_you_want" = "ИИ-ге суретті сипаттаңыз";
 "enter_description" = "Сипаттама енгізіңіз...";
 "generating" = "Жасалуда...";
 "generate_image" = "Сурет жасау";
-"image_preview" = "Суреттің алдын ала қарауы";
-"do_you_like_image" = "Жасалған суретке ұнайсыз ба?";
+"image_preview" = "Суретті алдын ала қарау";
+"do_you_like_image" = "Жасалған сурет ұнады ма?";
 "no_image" = "Сурет жоқ";
-"save_and_continue" = "Сақтап жалғастыру";
+"save_and_continue" = "Сақтау және жалғастыру";
 "regenerate" = "Қайта жасау";
-"name_your_card" = "Картаны атаңыз";
-"what_does_this_represent" = "Бұл нені білдіреді?";
+"name_your_card" = "Картаңызды атаңыз";
+"what_does_this_represent" = "Бұл карта не туралы?";
 "enter_card_name" = "Карта атауын енгізіңіз...";
 "ready_to_save" = "Сақтауға дайын!";
 "your_card_looks_amazing" = "Картаңыз керемет";
@@ -106,9 +106,9 @@
 "save_card_arrow" = "Картаны сақтау →";
 "please_select_category" = "Санат таңдаңыз";
 "create_another_card" = "Тағы карта жасау";
-"go_to_board" = "Тақтаға өту";
-"step1_label" = "1-ШАГ: ИИ-МЕН ЖАСАУ";
-"step2_label" = "2-ШАГ: СУРЕТ КӨЗІН ТАҢДАУ";
+"go_to_board" = "Негізгі бетке өту";
+"step1_label" = "1-ШАГ: СУРЕТ ДЕРЕККӨЗІН ТАҢДАУ";
+"step2_label" = "2-ШАГ: ИИ ҚҰРАЛЫМЕН ЖАСАУ";
 "step3_label" = "3-ШАГ: СУРЕТТІ ҚАРАУ";
 "step4_label" = "4-ШАГ: КАРТА АТАУЫ";
 "step5_label" = "5-ШАГ: КАРТАНЫ САҚТАУ";
@@ -132,11 +132,11 @@
 "new_category" = "Жаңа санат";
 
 // MARK: - Галерея
-"gallery_title" = "Карточка галереясы";
+"gallery_title" = "Карталар галереясы";
 "all_tab" = "Барлығы";
 "favorites_tab" = "Таңдаулылар";
 "categories_tab" = "Санаттар";
-"no_cards_gallery" = "Карталар жоқ";
+"no_cards_gallery" = "Карталар әзірше жоқ";
 "create_first_card_hint" = "Бас экрандағы «+» түймесін басып, бірінші картаны жасаңыз.";
 "no_favorites" = "Таңдаулылар жоқ";
 "add_to_favorites_hint" = "Жүрекшені басу арқылы карталарды таңдаулыларға қосыңыз.";
@@ -145,7 +145,7 @@
 "cards_suffix" = "карта";
 
 // MARK: - Авторизация
-"welcome_back" = "Қайта оралдыңыз!";
+"welcome_back" = "Қош келдіңіз!";
 "login_unsuccessful" = "Кіру сәтсіз болды";
 "sign_in_to_continue" = "Жалғастыру үшін кіріңіз";
 "please_check_credentials" = "Деректеріңізді тексеріңіз";
@@ -156,8 +156,8 @@
 "remember_me" = "Мені есте сақтау";
 "forgot_password_q" = "Құпиясөзді ұмыттыңыз ба?";
 "sign_in_arrow" = "Кіру →";
-"try_again_arrow" = "Қайталап көру →";
-"or" = "немесе";
+"try_again_arrow" = "Қайталап көру";
+"or" = "не болмаса";
 "dont_have_account" = "Аккаунтыңыз жоқ па?";
 "sign_up_here" = "Мұнда тіркелу";
 "welcome_emoji" = "Қош келдіңіз! 👋";
@@ -170,13 +170,13 @@
 "continue_arrow" = "Жалғастыру →";
 "already_have_account" = "Аккаунтыңыз бар ма?";
 "login_here" = "Мұнда кіру";
-"stay_safe" = "Қауіпсіз болыңыз! 🔒";
+"stay_safe" = "Қауіпсіздігіңізді сақтаңыз! 🔒";
 "looking_good_almost" = "Тамаша! Дерлік дайын";
 "secure_your_account" = "Аккаунтты қорғаңыз";
-"create_password_label" = "Құпиясөз жасаңыз";
+"create_password_label" = "Құпиясөз ойлап табыңыз";
 "confirm_password_label" = "Құпиясөзді растаңыз";
 "repeat_password_placeholder" = "Құпиясөзді қайталаңыз";
-"almost_done_banner" = "✨ Дерлік дайын! Тағы бір рет! 🎉";
+"almost_done_banner" = "✨ Дерлік дайын! Тағы бір клик! 🎉";
 "registration_failed" = "Тіркелу сәтсіз";
 "creating_account" = "Аккаунт жасалуда...";
 "reset_password_title" = "Құпиясөзді қалпына келтіру";
@@ -197,3 +197,14 @@
 "save_btn" = "Сақтау";
 "done_btn" = "Дайын";
 "continue_btn" = "Жалғастыру →";
+
+// MARK: - Register Success
+"youre_in" = "Кіріп кеттіңіз!";
+"account_created" = "Тіркелгі сәтті жасалды.\nUnim-ге қош келдіңіз!";
+
+// MARK: - Category / Card Actions
+"delete_category_btn" = "Санатты жою";
+"rename_card" = "Атын өзгерту";
+"card_name_placeholder" = "Карточка атауы...";
+"delete_card" = "Карточканы жою";
+"edit_card" = "Өңдеу";

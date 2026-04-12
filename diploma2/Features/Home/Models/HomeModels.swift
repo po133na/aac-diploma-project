@@ -19,6 +19,13 @@ enum SentenceToken: Identifiable {
     var word: String {
         switch self { case .card(let c, _): return c.word; case .typed(let t, _): return t }
     }
+
+    func localizedWord(language: AppLanguage) -> String {
+        switch self {
+        case .card(let c, _): return c.localizedWord(language: language)
+        case .typed(let t, _): return t
+        }
+    }
     var isCard: Bool {
         if case .card = self { return true }; return false
     }

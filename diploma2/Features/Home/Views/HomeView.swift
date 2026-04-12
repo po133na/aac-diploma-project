@@ -6,6 +6,13 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject private var viewModel: HomeViewModel
 
+    // ── Popup states (at HomeView level for full-screen overlay) ──
+    @State private var cardForMenu: Card? = nil
+    @State private var isRenamingCard = false
+    @State private var newCardName = ""
+    @State private var showDeleteCardConfirm = false
+    @State private var showDeleteCategoryConfirm = false
+
     var body: some View {
         ZStack {
             Color("AppBg").ignoresSafeArea()
@@ -17,14 +24,87 @@ struct HomeView: View {
                     MockCategoryDetailView(category: mockCat, viewModel: viewModel)
                         .transition(.move(edge: .trailing))
                 } else if let category = viewModel.selectedCategory {
-                    RealCategoryDetailView(category: category, viewModel: viewModel)
-                        .transition(.move(edge: .trailing))
+                    RealCategoryDetailView(
+                        category: category,
+                        viewModel: viewModel,
+                        onCardMinusTap: { card in
+                            newCardName = card.word
+                            isRenamingCard = false
+                            cardForMenu = card
+                        },
+                        onDeleteCategoryTap: {
+                            showDeleteCategoryConfirm = true
+                        }
+                    )
+                    .transition(.move(edge: .trailing))
                 } else {
                     HomeContentView(viewModel: viewModel)
                         .transition(.move(edge: .leading))
                 }
             }
+
+            // ── Card action popup ──
+            if let card = cardForMenu {
+                CardActionPopup(
+                    card: card,
+                    isRenaming: $isRenamingCard,
+                    newName: $newCardName,
+                    onClose: {
+                        cardForMenu = nil
+                        isRenamingCard = false
+                    },
+                    onDeleteTap: {
+                        cardForMenu = nil
+                        showDeleteCardConfirm = true
+                    },
+                    onRename: { name in
+                        cardForMenu = nil
+                        isRenamingCard = false
+                        Task { await viewModel.updateCard(card, word: name) }
+                    }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                .offset(y: -100)  // ← добавьте это
+
+            }
+
+            // ── Delete card confirmation ──
+            if showDeleteCardConfirm {
+                let cardWord = newCardName // сохраняем слово перед очисткой
+                DeleteConfirmModal(
+                    title: "Delete \"\(cardWord)?\"",
+                    subtitle: "This card will be permanently removed from your library.",
+                    buttonTitle: "Delete Card",
+                    onCancel: { showDeleteCardConfirm = false },
+                    onConfirm: {
+                        showDeleteCardConfirm = false
+                        if let card = viewModel.cardsInCategory.first(where: { $0.word == cardWord }) {
+                            viewModel.deleteCard(card)
+                        }
+                    }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+            }
+
+            // ── Delete category confirmation ──
+            if showDeleteCategoryConfirm, let category = viewModel.selectedCategory {
+                DeleteConfirmModal(
+                    title: "Delete \"\(category.localizedName(language: LocalizationManager.shared.currentLanguage))?\"",
+                    subtitle: "Cards inside will move to Unassigned. This cannot be undone.",
+                    buttonTitle: "Delete Category",
+                    onCancel: { showDeleteCategoryConfirm = false },
+                    onConfirm: {
+                        showDeleteCategoryConfirm = false
+                        viewModel.deleteCategory(category)
+                        viewModel.goBack()
+                    }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+            }
         }
+        .animation(.easeInOut(duration: 0.2), value: cardForMenu?.id)
+        .animation(.easeInOut(duration: 0.2), value: showDeleteCardConfirm)
+        .animation(.easeInOut(duration: 0.2), value: showDeleteCategoryConfirm)
         .animation(.easeInOut(duration: 0.25), value: viewModel.selectedCategory?.id)
         .animation(.easeInOut(duration: 0.25), value: viewModel.selectedMockCategory?.id)
         .onAppear {
@@ -32,7 +112,6 @@ struct HomeView: View {
         }
     }
 }
-
 // MARK: - Sentence Builder Bar
 struct SentenceBuilderBar: View {
     @ObservedObject var viewModel: HomeViewModel
@@ -345,18 +424,11 @@ struct HomeContentView: View {
                 } else if !viewModel.categories.isEmpty {
                     VStack(spacing: 10) {
                         ForEach(viewModel.categories) { category in
-                            RealCategoryRow(category: category) {
-                                viewModel.selectCategory(category)
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                if !category.isSystem {
-                                    Button(role: .destructive) {
-                                        viewModel.deleteCategory(category)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                }
-                            }
+                            RealCategoryRow(
+                                category: category,
+                                onTap: { viewModel.selectCategory(category) },
+                                onDelete: { viewModel.deleteCategory(category) }
+                            )
                         }
                     }
                     .padding(.horizontal, 16)
@@ -384,40 +456,6 @@ struct HomeContentView: View {
                     ProgressView().padding(.top, 40)
                 }
 
-                if !viewModel.recentCards.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Text(localization.recentCards)
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(Color("AppTextPrimary"))
-                            Spacer()
-                            NavigationLink(destination: CardManagerView()) {
-                                Text(localization.viewAll)
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(Color(hex: "F87171"))
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 20)
-
-                        let columns = [
-                            GridItem(.flexible(), spacing: 10),
-                            GridItem(.flexible(), spacing: 10),
-                            GridItem(.flexible(), spacing: 10),
-                        ]
-                        LazyVGrid(columns: columns, spacing: 10) {
-                            ForEach(viewModel.recentCards.prefix(6)) { card in
-                                RecentCardTile(card: card) {
-                                    withAnimation(.spring(response: 0.3)) {
-                                        viewModel.addCard(card)
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                    }
-                }
-
                 Spacer().frame(height: 100)
             }
         }
@@ -432,6 +470,13 @@ struct HomeContentView: View {
 struct RealCategoryRow: View {
     let category: Category
     let onTap: () -> Void
+    var onDelete: (() -> Void)? = nil
+
+    @ObservedObject private var l = LocalizationManager.shared
+
+    private var displayName: String {
+        category.localizedName(language: l.currentLanguage)
+    }
 
     private var coverImage: UIImage? {
         guard let base64 = category.coverImageBase64,
@@ -459,10 +504,10 @@ struct RealCategoryRow: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(category.name)
+                    Text(displayName)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(Color("AppTextPrimary"))
-                    Text(category.isSystem ? LocalizationManager.shared.systemCategory : LocalizationManager.shared.myCategory)
+                    Text(category.isSystem ? l.systemCategory : l.myCategory)
                         .font(.system(size: 12))
                         .foregroundColor(Color("AppTextSecondary"))
                 }
@@ -485,7 +530,6 @@ struct RealCategoryRow: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
-
 // MARK: - Mock Category Row
 
 struct MockCategoryRow: View {
@@ -602,7 +646,12 @@ struct MockCategoryDetailView: View {
 struct RealCategoryDetailView: View {
     let category: Category
     @ObservedObject var viewModel: HomeViewModel
+    var onCardMinusTap: ((Card) -> Void)? = nil
+    var onDeleteCategoryTap: (() -> Void)? = nil
 
+    @State private var isEditing = false
+    @State private var showAddCards = false  // ← добавить
+    @ObservedObject private var l = LocalizationManager.shared
     private let columns = [
         GridItem(.flexible(), spacing: 10),
         GridItem(.flexible(), spacing: 10),
@@ -612,6 +661,7 @@ struct RealCategoryDetailView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
+                // хедер без изменений...
                 HStack {
                     Button { viewModel.goBack() } label: {
                         ZStack {
@@ -623,55 +673,280 @@ struct RealCategoryDetailView: View {
                         }
                     }
                     Spacer()
-                    Text("\(category.icon ?? "✨") \(category.name)")
+                    Text("\(category.icon ?? "✨") \(category.localizedName(language: l.currentLanguage))")
                         .font(.system(size: 18, weight: .bold))
                         .foregroundColor(Color("AppTextPrimary"))
                     Spacer()
-                    Circle().fill(Color.clear).frame(width: 36, height: 36)
+                    if !(category.isSystem && category.nameEn == "Basics") {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) { isEditing.toggle() }
+                        } label: {
+                            Text(isEditing ? "Done" : "Edit")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(isEditing ? .white : Color("AppTextPrimary"))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule()
+                                        .fill(isEditing ? Color(hex: "F87171") : Color("AppSurface"))
+                                        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+                                )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    } else {
+                        Circle().fill(Color.clear).frame(width: 36, height: 36)
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
                 .padding(.bottom, 12)
 
+                if isEditing {
+                    Button { onDeleteCategoryTap?() } label: {
+                        HStack(spacing: 10) {
+                            ZStack {
+                                Circle().fill(Color.white.opacity(0.3)).frame(width: 30, height: 30)
+                                Image(systemName: "trash.fill").font(.system(size: 13)).foregroundColor(.white)
+                            }
+                            Text("Delete \"\(category.localizedName(language: l.currentLanguage))\" category")
+                                .font(.system(size: 15, weight: .semibold)).foregroundColor(.white)
+                            Spacer()
+                            Image(systemName: "arrow.right").font(.system(size: 13, weight: .semibold)).foregroundColor(.white)
+                        }
+                        .padding(.horizontal, 16).padding(.vertical, 14)
+                        .background(RoundedRectangle(cornerRadius: 14).fill(Color(hex: "F87171")))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal, 16).padding(.bottom, 12)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+
                 if viewModel.isLoadingCards {
                     ProgressView().padding(.top, 40)
-                } else if viewModel.cardsInCategory.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "rectangle.stack")
-                            .font(.system(size: 50))
-                            .foregroundColor(Color("AppTextHint"))
-                        Text(LocalizationManager.shared.noCards)
-                            .font(.system(size: 16))
-                            .foregroundColor(Color("AppTextSecondary"))
-                    }
-                    .padding(.top, 60)
                 } else {
                     LazyVGrid(columns: columns, spacing: 10) {
+
+                        // ── Кнопка Add Cards (только в режиме edit) ──
+                        if isEditing {
+                            Button { showAddCards = true } label: {
+                                VStack(spacing: 8) {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 24, weight: .semibold))
+                                        .foregroundColor(Color(hex: "5BAECC"))
+                                    Text("Add Cards")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(Color(hex: "5BAECC"))
+                                }
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 120)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .strokeBorder(
+                                            Color(hex: "5BAECC"),
+                                            style: StrokeStyle(lineWidth: 2, dash: [6])
+                                        )
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 18)
+                                                .fill(Color(hex: "EAF6FB"))
+                                        )
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .transition(.scale.combined(with: .opacity))
+                        }
+
                         ForEach(viewModel.cardsInCategory) { card in
-                            RealCardTile(card: card) {
-                                withAnimation(.spring(response: 0.3)) {
-                                    viewModel.addCard(card)
-                                }
-                            }
-                            .contextMenu {
-                                if card.userId != nil {
-                                    Button(role: .destructive) {
-                                        viewModel.deleteCard(card)
-                                    } label: {
-                                        Label("Delete card", systemImage: "trash")
+                            RealCardTile(
+                                card: card,
+                                isEditing: isEditing,
+                                onTap: {
+                                    if !isEditing {
+                                        withAnimation(.spring(response: 0.3)) { viewModel.addCard(card) }
                                     }
-                                }
-                            }
+                                },
+                                onMinusTap: { onCardMinusTap?(card) }
+                            )
                         }
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 20)
 
-                    QuickTipBanner()
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 100)
+                    if !viewModel.cardsInCategory.isEmpty {
+                        QuickTipBanner()
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 100)
+                    } else if !isEditing {
+                        VStack(spacing: 12) {
+                            Image(systemName: "rectangle.stack")
+                                .font(.system(size: 50))
+                                .foregroundColor(Color("AppTextHint"))
+                            Text(l.noCards)
+                                .font(.system(size: 16))
+                                .foregroundColor(Color("AppTextSecondary"))
+                        }
+                        .padding(.top, 60)
+                    }
                 }
             }
+        }
+        .animation(.easeInOut(duration: 0.2), value: isEditing)
+        .sheet(isPresented: $showAddCards) {
+            AddCardsToCategory(category: category, viewModel: viewModel)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+    }
+}
+// MARK: - Card Action Popup
+
+private struct CardActionPopup: View {
+    let card: Card
+    @Binding var isRenaming: Bool
+    @Binding var newName: String
+    let onClose: () -> Void
+    let onDeleteTap: () -> Void
+    let onRename: (String) -> Void
+
+    @FocusState private var nameFocused: Bool
+    @State private var uiImage: UIImage? = nil
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture { onClose() }
+
+            VStack(spacing: 0) {
+                // Крестик
+                HStack {
+                    Spacer()
+                    Button(action: onClose) {
+                        ZStack {
+                            Circle()
+                                .fill(Color(hex: "F0F0F0"))
+                                .frame(width: 30, height: 30)
+                            Image(systemName: "xmark")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(Color(hex: "888888"))
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 8)
+
+                if isRenaming {
+                    // ── Режим переименования ──
+                    VStack(spacing: 16) {
+                        VStack(spacing: 6) {
+                            Group {
+                                if let img = uiImage {
+                                    Image(uiImage: img)
+                                        .resizable()
+                                        .scaledToFill()
+                                } else {
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .fill(Color(hex: "F5D6EC"))
+                                }
+                            }
+                            .frame(width: 64, height: 64)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                            Text(card.word)
+                                .font(.system(size: 13))
+                                .foregroundColor(Color("AppTextSecondary"))
+                        }
+
+                        TextField("Card name...", text: $newName)
+                            .font(.system(size: 16))
+                            .foregroundColor(Color("AppTextPrimary"))
+                            .padding(14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(hex: "F5F5F5"))
+                            )
+                            .focused($nameFocused)
+                            .onAppear { nameFocused = true }
+
+                        Button {
+                            let t = newName.trimmingCharacters(in: .whitespaces)
+                            guard !t.isEmpty else { return }
+                            onRename(t)
+                        } label: {
+                            Text("Save Card")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(Capsule().fill(Color(hex: "5BAECC")))
+                        }
+                        .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .opacity(newName.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 24)
+                } else {
+                    // ── Кнопки Rename / Delete ──
+                    VStack(spacing: 10) {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.15)) { isRenaming = true }
+                        } label: {
+                            HStack(spacing: 14) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color(hex: "EAF4FB"))
+                                        .frame(width: 40, height: 40)
+                                    Image(systemName: "pencil")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(Color(hex: "5BAECC"))
+                                }
+                                Text("Rename")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(Color("AppTextPrimary"))
+                                Spacer()
+                            }
+                            .padding(14)
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Color(hex: "F5F5F5")))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+
+                        Button(action: onDeleteTap) {
+                            HStack(spacing: 14) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color(hex: "FEE2E2"))
+                                        .frame(width: 40, height: 40)
+                                    Image(systemName: "trash.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(Color(hex: "F87171"))
+                                }
+                                Text("Delete Card")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(Color(hex: "F87171"))
+                                Spacer()
+                            }
+                            .padding(14)
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Color(hex: "F5F5F5")))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 20)
+                }
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color.white)
+                    .shadow(color: .black.opacity(0.15), radius: 24, x: 0, y: 8)
+            )
+            .padding(.horizontal, 32)
+        }
+        .task {
+            let base64 = card.imageBase64
+            uiImage = await Task.detached(priority: .userInitiated) {
+                guard let data = Data(base64Encoded: base64) else { return UIImage?.none }
+                return UIImage(data: data)
+            }.value
         }
     }
 }
@@ -680,50 +955,73 @@ struct RealCategoryDetailView: View {
 
 struct RealCardTile: View {
     let card: Card
+    var isEditing: Bool = false
     let onTap: () -> Void
+    var onMinusTap: (() -> Void)? = nil
     @State private var isPressed = false
     @State private var uiImage: UIImage? = nil
+    @ObservedObject private var l = LocalizationManager.shared
 
     var body: some View {
-        Button(action: onTap) {
-            VStack(spacing: 0) {
-                Group {
-                    if let image = uiImage {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFill()
-                    } else {
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color("AppPlaceholderBg").opacity(0.4))
+        ZStack(alignment: .topTrailing) {
+            Button(action: onTap) {
+                VStack(spacing: 0) {
+                    Group {
+                        if let image = uiImage {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFill()
+                        } else {
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color("AppPlaceholderBg").opacity(0.4))
+                        }
+                    }
+                    .frame(height: 70)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .padding(.horizontal, 8)
+                    .padding(.top, 8)
+
+                    Text(card.localizedWord(language: l.currentLanguage))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(Color("AppTextDark"))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 8)
+                }
+                .frame(height: 120)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color("AppPlaceholderBg").opacity(0.2))
+                        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
+                )
+                .scaleEffect(isPressed ? 0.94 : 1.0)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in withAnimation(.easeInOut(duration: 0.1)) { isPressed = true } }
+                    .onEnded   { _ in withAnimation(.easeInOut(duration: 0.15)) { isPressed = false } }
+            )
+
+            // ── Красный минус (только в режиме edit) ──
+            if isEditing {
+                Button(action: { onMinusTap?() }) {
+                    ZStack {
+                        Circle()
+                            .fill(Color(hex: "C0392B"))
+                            .frame(width: 24, height: 24)
+                            .shadow(color: .black.opacity(0.2), radius: 3, x: 0, y: 1)
+                        Image(systemName: "minus")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.white)
                     }
                 }
-                .frame(height: 70)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .padding(.horizontal, 8)
-                .padding(.top, 8)
-
-                Text(card.word)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(Color("AppTextDark"))
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 8)
+                .buttonStyle(PlainButtonStyle())
+                .offset(x: 4, y: -4)
+                .transition(.scale.combined(with: .opacity))
             }
-            .frame(height: 120)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color("AppPlaceholderBg").opacity(0.2))
-                    .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
-            )
-            .scaleEffect(isPressed ? 0.94 : 1.0)
         }
-        .buttonStyle(PlainButtonStyle())
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in withAnimation(.easeInOut(duration: 0.1)) { isPressed = true } }
-                .onEnded   { _ in withAnimation(.easeInOut(duration: 0.15)) { isPressed = false } }
-        )
         .task(id: card.id) {
             guard uiImage == nil else { return }
             let base64 = card.imageBase64
@@ -735,7 +1033,6 @@ struct RealCardTile: View {
         }
     }
 }
-
 // MARK: - Word Card View (mock)
 
 struct WordCardView: View {
@@ -837,6 +1134,7 @@ struct RecentCardTile: View {
     let onTap: () -> Void
     @State private var isPressed = false
     @State private var uiImage: UIImage? = nil
+    @ObservedObject private var l = LocalizationManager.shared
 
     var body: some View {
         Button(action: onTap) {
@@ -856,7 +1154,7 @@ struct RecentCardTile: View {
                 .padding(.horizontal, 8)
                 .padding(.top, 8)
 
-                Text(card.word)
+                Text(card.localizedWord(language: l.currentLanguage))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(Color("AppTextDark"))
                     .lineLimit(2)
@@ -900,4 +1198,272 @@ private func detectManualLanguage(_ text: String) -> AppLanguage {
         if v >= 0x0400 && v <= 0x04FF { return .russian }
     }
     return .english
+}
+
+
+struct DeleteConfirmModal: View {
+    let title: String
+    let subtitle: String
+    let buttonTitle: String
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture { onCancel() }
+
+            VStack(spacing: 20) {
+                // Крестик
+                HStack {
+                    Spacer()
+                    Button(action: onCancel) {
+                        ZStack {
+                            Circle()
+                                .fill(Color(hex: "F0F0F0"))
+                                .frame(width: 30, height: 30)
+                            Image(systemName: "xmark")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(Color(hex: "888888"))
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+
+                // Иконка
+                ZStack {
+                    Circle()
+                        .fill(Color(hex: "FECACA"))
+                        .frame(width: 64, height: 64)
+                    Image(systemName: "trash.fill")
+                        .font(.system(size: 26))
+                        .foregroundColor(Color(hex: "F87171"))
+                }
+
+                // Текст
+                VStack(spacing: 8) {
+                    Text(title)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(Color(hex: "1C3F6E"))
+                        .multilineTextAlignment(.center)
+
+                    Text(subtitle)
+                        .font(.system(size: 14))
+                        .foregroundColor(Color(hex: "6B8BAE"))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
+                }
+
+                // Кнопка подтверждения
+                Button(action: onConfirm) {
+                    Text(buttonTitle)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            Capsule()
+                                .fill(Color(hex: "F87171"))
+                        )
+                }
+                .padding(.horizontal, 4)
+                .padding(.bottom, 20)
+            }
+            .padding(.horizontal, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color.white)
+                    .shadow(color: .black.opacity(0.15), radius: 24, x: 0, y: 8)
+            )
+            .padding(.horizontal, 40)
+        }
+    }
+}
+
+
+// MARK: - Add Cards To Category Sheet
+
+struct AddCardsToCategory: View {
+    let category: Category
+    @ObservedObject var viewModel: HomeViewModel
+    @Environment(\.dismiss) var dismiss
+
+    @State private var allCards: [Card] = []
+    @State private var selectedIds: Set<Int> = []
+    @State private var isLoading = true
+    @State private var isSaving = false
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10),
+    ]
+
+    // Карточки которых ещё нет в категории
+    private var availableCards: [Card] {
+        let existingIds = Set(viewModel.cardsInCategory.map { $0.id })
+        return allCards.filter { !existingIds.contains($0.id) }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Хедер
+            HStack {
+                Button { dismiss() } label: {
+                    Text("Cancel")
+                        .foregroundColor(Color("AppTextSecondary"))
+                        .font(.system(size: 15))
+                }
+                Spacer()
+                Text("Add Cards")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundColor(Color("AppTextPrimary"))
+                Spacer()
+                Button {
+                    guard !selectedIds.isEmpty else { dismiss(); return }
+                    isSaving = true
+                    Task {
+                        for cardId in selectedIds {
+                            _ = try? await CardService.shared.updateCard(id: cardId, categoryId: category.id)
+                        }
+                        await viewModel.loadCards(for: category)
+                        isSaving = false
+                        dismiss()
+                    }
+                } label: {
+                    if isSaving {
+                        ProgressView().scaleEffect(0.8)
+                    } else {
+                        Text(selectedIds.isEmpty ? "Done" : "Add (\(selectedIds.count))")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(selectedIds.isEmpty ? Color("AppTextHint") : Color(hex: "5BAECC"))
+                    }
+                }
+                .disabled(isSaving)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+
+            Divider()
+
+            if isLoading {
+                Spacer()
+                ProgressView()
+                Spacer()
+            } else if availableCards.isEmpty {
+                Spacer()
+                VStack(spacing: 12) {
+                    Image(systemName: "rectangle.stack")
+                        .font(.system(size: 40))
+                        .foregroundColor(Color("AppTextHint"))
+                    Text("No cards available")
+                        .font(.system(size: 16))
+                        .foregroundColor(Color("AppTextSecondary"))
+                    Text("Create new cards first")
+                        .font(.system(size: 13))
+                        .foregroundColor(Color("AppTextHint"))
+                }
+                Spacer()
+            } else {
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Select cards to add to \"\(category.localizedName(language: LocalizationManager.shared.currentLanguage))\"")
+                            .font(.system(size: 13))
+                            .foregroundColor(Color("AppTextSecondary"))
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
+
+                        LazyVGrid(columns: columns, spacing: 10) {
+                            ForEach(availableCards) { card in
+                                SelectableCardTile(
+                                    card: card,
+                                    isSelected: selectedIds.contains(card.id)
+                                ) {
+                                    if selectedIds.contains(card.id) {
+                                        selectedIds.remove(card.id)
+                                    } else {
+                                        selectedIds.insert(card.id)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 40)
+                    }
+                }
+            }
+        }
+        .background(Color("AppBg").ignoresSafeArea())
+        .task {
+            allCards = (try? await CardService.shared.getCards()) ?? []
+            isLoading = false
+        }
+    }
+}
+
+// MARK: - Selectable Card Tile
+
+private struct SelectableCardTile: View {
+    let card: Card
+    let isSelected: Bool
+    let onTap: () -> Void
+    @State private var uiImage: UIImage? = nil
+    @ObservedObject private var l = LocalizationManager.shared
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Button(action: onTap) {
+                VStack(spacing: 0) {
+                    Group {
+                        if let img = uiImage {
+                            Image(uiImage: img).resizable().scaledToFill()
+                        } else {
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color("AppPlaceholderBg").opacity(0.4))
+                        }
+                    }
+                    .frame(height: 70)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .padding(.horizontal, 8).padding(.top, 8)
+
+                    Text(card.localizedWord(language: l.currentLanguage))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(Color("AppTextDark"))
+                        .lineLimit(2).multilineTextAlignment(.center)
+                        .padding(.horizontal, 4).padding(.vertical, 8)
+                }
+                .frame(height: 120)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color("AppSurface"))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18)
+                                .stroke(isSelected ? Color(hex: "5BAECC") : Color.clear, lineWidth: 2.5)
+                        )
+                        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if isSelected {
+                ZStack {
+                    Circle().fill(Color(hex: "5BAECC")).frame(width: 24, height: 24)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .offset(x: 4, y: -4)
+            }
+        }
+        .task(id: card.id) {
+            guard uiImage == nil else { return }
+            let base64 = card.imageBase64
+            uiImage = await Task.detached(priority: .userInitiated) {
+                guard let data = Data(base64Encoded: base64) else { return UIImage?.none }
+                return UIImage(data: data)
+            }.value
+        }
+    }
 }

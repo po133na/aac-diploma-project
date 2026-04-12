@@ -92,12 +92,15 @@ struct CategoryCreate: Codable {
 // MARK: - Card
 
 struct Card: Identifiable, Codable, Equatable {
-    let id: Int                         // бэкенд: Int
+    let id: Int
     var word: String
-    var language: String                // "ru" | "kk"
+    var wordRu: String?                 // русское название (новое поле бэка)
+    var wordKk: String?                 // казахское название
+    var wordEn: String?                 // английское название
+    var language: String                // "ru" | "kk" | "en"
     var translatedWord: String          // перевод на английский (для промпта)
     var imageBase64: String             // base64 PNG
-    var isFavorite: Bool                // бэкенд: is_favorite
+    var isFavorite: Bool
     var usageCount: Int
     var categoryId: Int?
     var userId: Int?
@@ -110,8 +113,20 @@ struct Card: Identifiable, Codable, Equatable {
         return UIImage(data: data)
     }
 
+    // Локализованное слово
+    func localizedWord(language: AppLanguage) -> String {
+        switch language {
+        case .russian: return wordRu ?? word
+        case .kazakh:  return wordKk ?? word
+        case .english: return wordEn ?? word
+        }
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, word, language
+        case wordRu         = "word_ru"
+        case wordKk         = "word_kk"
+        case wordEn         = "word_en"
         case translatedWord = "translated_word"
         case imageBase64    = "image_base64"
         case isFavorite     = "is_favorite"
@@ -307,7 +322,7 @@ enum AppLanguage: String, Codable, CaseIterable {
         switch self {
         case .kazakh:  return "kk"
         case .russian: return "ru"
-        case .english: return "ru"  // fallback на русский
+        case .english: return "en"
         }
     }
 }

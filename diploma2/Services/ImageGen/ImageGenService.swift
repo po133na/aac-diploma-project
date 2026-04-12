@@ -39,7 +39,8 @@ final class ImageGenService {
         return try await client.request(
             path: "/cards/generate",
             method: "POST",
-            body: body
+            body: body,
+            timeout: 180  // AI-генерация может занимать до 60–120 сек
         )
     }
 }

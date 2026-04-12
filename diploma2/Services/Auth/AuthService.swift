@@ -27,6 +27,10 @@ final class AuthService {
         let email: String
     }
 
+    struct UpdateProfileRequest: Encodable {
+        let username: String
+    }
+
     struct ChangePasswordRequest: Encodable {
         let oldPassword: String
         let newPassword: String
@@ -73,6 +77,12 @@ final class AuthService {
     func forgotPassword(email: String) async throws -> MessageResponse {
         let body = ForgotPasswordRequest(email: email)
         return try await client.request(path: "/auth/forgot-password", method: "POST", body: body)
+    }
+
+    // Обновление профиля (имя)
+    func updateProfile(name: String) async throws -> User {
+        let body = UpdateProfileRequest(username: name)
+        return try await client.request(path: "/auth/me", method: "PATCH", body: body)
     }
 
     // Смена пароля (авторизованный)

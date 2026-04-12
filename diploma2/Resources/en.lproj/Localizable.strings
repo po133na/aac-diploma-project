@@ -107,8 +107,8 @@
 "please_select_category" = "Please select a category";
 "create_another_card" = "Create another card";
 "go_to_board" = "Go to Board";
-"step1_label" = "STEP 1: GENERATE WITH AI";
-"step2_label" = "STEP 2: CHOOSE IMAGE SOURCE";
+"step1_label" = "STEP 1: CHOOSE IMAGE SOURCE";
+"step2_label" = "STEP 2: GENERATE WITH AI";
 "step3_label" = "STEP 3: PREVIEW IMAGE";
 "step4_label" = "STEP 4: NAME YOUR CARD";
 "step5_label" = "STEP 5: SAVE YOUR CARD";
@@ -156,7 +156,7 @@
 "remember_me" = "Remember me";
 "forgot_password_q" = "Forgot Password ?";
 "sign_in_arrow" = "Sign In →";
-"try_again_arrow" = "Try Again →";
+"try_again_arrow" = "Try Again";
 "or" = "or";
 "dont_have_account" = "Don't have an Account?";
 "sign_up_here" = "Sign Up here";
@@ -197,3 +197,14 @@
 "save_btn" = "Save";
 "done_btn" = "Done";
 "continue_btn" = "Continue →";
+
+// MARK: - Register Success
+"youre_in" = "You're in!";
+"account_created" = "Account created successfully.\nWelcome to Unim!";
+
+// MARK: - Category / Card Actions
+"delete_category_btn" = "Delete category";
+"rename_card" = "Rename card";
+"card_name_placeholder" = "Card name...";
+"delete_card" = "Delete card";
+"edit_card" = "Edit card";

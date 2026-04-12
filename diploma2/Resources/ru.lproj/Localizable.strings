@@ -107,8 +107,8 @@
 "please_select_category" = "Выберите категорию";
 "create_another_card" = "Создать ещё карточку";
 "go_to_board" = "На доску";
-"step1_label" = "ШАГ 1: СОЗДАТЬ С ИИ";
-"step2_label" = "ШАГ 2: ВЫБРАТЬ ИСТОЧНИК";
+"step1_label" = "ШАГ 1: ВЫБРАТЬ ИСТОЧНИК";
+"step2_label" = "ШАГ 2: СОЗДАТЬ С ИИ";
 "step3_label" = "ШАГ 3: ПРЕДПРОСМОТР";
 "step4_label" = "ШАГ 4: НАЗВАНИЕ КАРТОЧКИ";
 "step5_label" = "ШАГ 5: СОХРАНИТЬ КАРТОЧКУ";
@@ -156,7 +156,7 @@
 "remember_me" = "Запомнить меня";
 "forgot_password_q" = "Забыли пароль ?";
 "sign_in_arrow" = "Войти →";
-"try_again_arrow" = "Попробовать снова →";
+"try_again_arrow" = "Попробовать снова";
 "or" = "или";
 "dont_have_account" = "Нет аккаунта?";
 "sign_up_here" = "Зарегистрируйтесь здесь";
@@ -197,3 +197,14 @@
 "save_btn" = "Сохранить";
 "done_btn" = "Готово";
 "continue_btn" = "Продолжить →";
+
+// MARK: - Register Success
+"youre_in" = "Вы вошли!";
+"account_created" = "Аккаунт успешно создан.\nДобро пожаловать в Unim!";
+
+// MARK: - Category / Card Actions
+"delete_category_btn" = "Удалить категорию";
+"rename_card" = "Переименовать";
+"card_name_placeholder" = "Название карточки...";
+"delete_card" = "Удалить карточку";
+"edit_card" = "Редактировать";

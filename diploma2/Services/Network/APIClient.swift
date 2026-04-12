@@ -193,27 +193,30 @@ final class APIClient {
         path: String,
         method: String = "GET",
         body: B,
-        queryItems: [URLQueryItem]? = nil
+        queryItems: [URLQueryItem]? = nil,
+        timeout: TimeInterval = 15
     ) async throws -> T {
-        try await performRequest(path: path, method: method, body: body, queryItems: queryItems)
+        try await performRequest(path: path, method: method, body: body, queryItems: queryItems, timeout: timeout)
     }
 
     // MARK: - Без тела запроса
     func request<T: Decodable>(
         path: String,
         method: String = "GET",
-        queryItems: [URLQueryItem]? = nil
+        queryItems: [URLQueryItem]? = nil,
+        timeout: TimeInterval = 15
     ) async throws -> T {
-        try await performRequest(path: path, method: method, body: nil as EmptyBody?, queryItems: queryItems)
+        try await performRequest(path: path, method: method, body: nil as EmptyBody?, queryItems: queryItems, timeout: timeout)
     }
 
     // MARK: - Void (DELETE и т.п.)
     func requestVoid(
         path: String,
         method: String = "DELETE",
-        queryItems: [URLQueryItem]? = nil
+        queryItems: [URLQueryItem]? = nil,
+        timeout: TimeInterval = 15
     ) async throws {
-        let _: EmptyResponse = try await performRequest(path: path, method: method, body: nil as EmptyBody?, queryItems: queryItems)
+        let _: EmptyResponse = try await performRequest(path: path, method: method, body: nil as EmptyBody?, queryItems: queryItems, timeout: timeout)
     }
 
     // MARK: - Void с raw Data-телом (для PendingActionQueue)
@@ -228,7 +231,7 @@ final class APIClient {
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = method
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.timeoutInterval = 30
+        urlRequest.timeoutInterval = 15
         if let token { urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         urlRequest.httpBody = bodyData
 
@@ -242,7 +245,8 @@ final class APIClient {
         path: String,
         method: String,
         body: B?,
-        queryItems: [URLQueryItem]?
+        queryItems: [URLQueryItem]?,
+        timeout: TimeInterval = 15
     ) async throws -> T {
         var components = URLComponents(string: baseURL + path)!
         if let queryItems { components.queryItems = queryItems }
@@ -251,7 +255,7 @@ final class APIClient {
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = method
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.timeoutInterval = 30
+        urlRequest.timeoutInterval = timeout
 
         if let token {
             urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

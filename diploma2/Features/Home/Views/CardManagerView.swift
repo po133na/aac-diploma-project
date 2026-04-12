@@ -45,7 +45,7 @@ struct CardManagerView: View {
                             Text(localization.cardManager)
                                 .font(.system(size: 18, weight: .bold))
                                 .foregroundColor(Color("AppTextPrimary"))
-                            Text("\(homeViewModel.recentCards.count) \(localization.cardsTotal)")
+                            Text(localization.cardManager)
                                 .font(.system(size: 12))
                                 .foregroundColor(Color("AppTextSecondary"))
                         }
@@ -55,40 +55,6 @@ struct CardManagerView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
                     .padding(.bottom, 20)
-
-                    // ── Recent Cards ──
-                    HStack {
-                        Text(localization.recentCards)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(Color("AppTextPrimary"))
-                        Spacer()
-                        Button(localization.viewAll) { onDismissToHome?() }
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(Color(hex: "F87171"))
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
-
-                    // Грид реальных карточек
-                    let columns = [
-                        GridItem(.flexible(), spacing: 10),
-                        GridItem(.flexible(), spacing: 10),
-                        GridItem(.flexible(), spacing: 10),
-                    ]
-                    if homeViewModel.recentCards.isEmpty {
-                        Text(localization.noCards)
-                            .font(.system(size: 14))
-                            .foregroundColor(Color("AppTextHint"))
-                            .padding(.vertical, 20)
-                    } else {
-                        LazyVGrid(columns: columns, spacing: 10) {
-                            ForEach(homeViewModel.recentCards) { card in
-                                RealMiniCardView(card: card)
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                    }
-                    Spacer().frame(height: 20)
 
                     // ── Create New Card ──
                     Button { showCreateCard = true } label: {
@@ -176,6 +142,7 @@ struct CardManagerView: View {
 private struct RealMiniCardView: View {
     let card: Card
     @State private var uiImage: UIImage? = nil
+    @ObservedObject private var l = LocalizationManager.shared
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -196,7 +163,7 @@ private struct RealMiniCardView: View {
                         .padding(.horizontal, 6)
                         .padding(.top, 6)
                 }
-                Text(card.word)
+                Text(card.localizedWord(language: LocalizationManager.shared.currentLanguage))
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(Color("AppTextDark"))
                     .lineLimit(1)
@@ -318,19 +285,26 @@ struct CreateCardFlow: View {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
-        
+
+        let word = imagePrompt
+        let language = detectPromptLanguage(imagePrompt)
+        let style = selectedStyle
+
         do {
-            let response = try await ImageGenService.shared.generateImage(
-                word: imagePrompt,
-                language: detectPromptLanguage(imagePrompt),
-                categoryId: nil,
-                style: selectedStyle
-            )
+            let response = try await Task.detached(priority: .userInitiated) {
+                try await ImageGenService.shared.generateImage(
+                    word: word,
+                    language: language,
+                    categoryId: nil,
+                    style: style
+                )
+            }.value
             generatedImageBase64 = response.imageBase64
             generatedTranslatedWord = response.translatedWord
             generatedCardId = response.id
             return true
         } catch {
+            print("[generateImage] error: \(error)")
             errorMessage = error.localizedDescription
             return false
         }
@@ -425,24 +399,7 @@ struct CreateCardFlow: View {
         }
         .task {
             do {
-                var loaded = try await CategoryService.shared.getCategories()
-                if loaded.isEmpty {
-                    let defaults: [(name: String, nameKk: String, nameEn: String, icon: String)] = [
-                        ("Основы",    "Негіздер",     "Basics",   "✨"),
-                        ("Еда",       "Тамақ",        "Food",     "🍎"),
-                        ("Действия",  "Іс-әрекеттер", "Actions",  "🏃"),
-                        ("Чувства",   "Сезімдер",     "Feelings", "💛"),
-                        ("Люди",      "Адамдар",      "People",   "👨‍👩‍👧"),
-                        ("Места",     "Орындар",      "Places",   "🏠"),
-                    ]
-                    for cat in defaults {
-                        _ = try await CategoryService.shared.createCategory(
-                            name: cat.name, nameKk: cat.nameKk, nameEn: cat.nameEn, icon: cat.icon
-                        )
-                    }
-                    loaded = try await CategoryService.shared.getCategories()
-                }
-                availableCategories = loaded
+                availableCategories = try await CategoryService.shared.getCategories()
             } catch {
                 print("[CreateCardFlow] categories error: \(error)")
             }
@@ -683,14 +640,15 @@ private struct CardDescribeStep: View {
                 .padding(.bottom, 20)
             }
 
-            // Сообщение об ошибке
+            // Сообщение об ошибке или статус загрузки
             if let errorMessage = errorMessage {
                 Text(errorMessage)
                     .font(.system(size: 14))
                     .foregroundColor(Color.red)
+                    .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 8)
-            }
+            } 
 
             // Кнопка Generate
             VStack {
@@ -737,13 +695,12 @@ private struct CardPreviewStep: View {
     let imageBase64: String?
     let onSave: () -> Void
     let onRegenerate: () -> Void
-    
+
     private var uiImage: UIImage? {
         guard let base64 = imageBase64,
               let data = Data(base64Encoded: base64) else { return nil }
         return UIImage(data: data)
     }
-    
     var body: some View {
         VStack(spacing: 0) {
             ScrollView(showsIndicators: false) {
@@ -758,7 +715,7 @@ private struct CardPreviewStep: View {
                             .foregroundColor(Color(hex: "7C5CBF"))
                     }
                     .padding(.top, 32)
-                    
+
                     let l = LocalizationManager.shared
                     VStack(spacing: 8) {
                         Text(l.imagePreview)
@@ -768,24 +725,23 @@ private struct CardPreviewStep: View {
                             .font(.system(size: 14))
                             .foregroundColor(Color("AppTextSecondary"))
                     }
-                    
+
                     // Превью изображения
-                    if let uiImage = uiImage {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 200, height: 200)
-                            .cornerRadius(20)
-                    } else {
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(Color("AppPlaceholderBg"))
-                            .frame(width: 200, height: 200)
-                            .overlay(
-                                Text(LocalizationManager.shared.noImage)
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                            )
+                    Group {
+                        if let uiImage = uiImage {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 200, height: 200)
+                                .cornerRadius(20)
+                        } else {
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(Color("AppPlaceholderBg"))
+                                .frame(width: 200, height: 200)
+                                .overlay(ProgressView())
+                        }
                     }
+
                     
                     // Кнопки
                     VStack(spacing: 12) {
@@ -990,14 +946,9 @@ private struct CardSaveStep: View {
 
                     // Dropdown категории (обязательно)
                     VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 4) {
-                            Text(l.selectCategory)
-                                .font(.system(size: 13))
-                                .foregroundColor(Color("AppTextSecondary"))
-                            Text("*")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundColor(Color(hex: "F87171"))
-                        }
+                        Text(l.selectCategory)
+                            .font(.system(size: 13))
+                            .foregroundColor(Color("AppTextSecondary"))
 
                         if isLoadingCategories {
                             HStack {
@@ -1034,7 +985,7 @@ private struct CardSaveStep: View {
                                        let cat = displayCategories.first(where: { $0.id == selId }) {
                                         Text(cat.icon ?? "📁")
                                             .font(.system(size: 20))
-                                        Text(cat.name)
+                                        Text(cat.localizedName(language: LocalizationManager.shared.currentLanguage))
                                             .font(.system(size: 15, weight: .medium))
                                             .foregroundColor(Color("AppTextPrimary"))
                                     } else {
@@ -1075,6 +1026,18 @@ private struct CardSaveStep: View {
                         }
                     }
                     
+                    // Подсказка: если категория не выбрана
+                    if selectedCategoryId == nil {
+                        HStack(spacing: 6) {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 12))
+                            Text("If no category is selected, the card will be saved to Unassigned")
+                                .font(.system(size: 12))
+                        }
+                        .foregroundColor(Color("AppTextHint"))
+                        .padding(.top, 4)
+                    }
+
                     // Сообщение об ошибке
                     if let errorMessage = errorMessage {
                         Text(errorMessage)
@@ -1106,8 +1069,8 @@ private struct CardSaveStep: View {
                         .fill(Color(hex: "6DBF82"))
                 )
             }
-            .disabled(isLoading || selectedCategoryId == nil)
-            .opacity((isLoading || selectedCategoryId == nil) ? 0.5 : 1)
+            .disabled(isLoading)
+            .opacity(isLoading ? 0.5 : 1)
             .padding(.horizontal, 20)
             .padding(.bottom, 32)
         }
@@ -1119,12 +1082,7 @@ private struct CardSaveStep: View {
         categoriesError = nil
         Task {
             do {
-                var loaded = try await CategoryService.shared.getCategories()
-                if loaded.isEmpty {
-                    try await createDefaultCategories()
-                    loaded = try await CategoryService.shared.getCategories()
-                }
-                localCategories = loaded
+                localCategories = try await CategoryService.shared.getCategories()
                 isLoadingCategories = false
             } catch {
                 categoriesError = error.localizedDescription
@@ -1134,36 +1092,25 @@ private struct CardSaveStep: View {
         }
     }
 
-    private func createDefaultCategories() async throws {
-        let defaults: [(name: String, nameKk: String, nameEn: String, icon: String)] = [
-            ("Основы",    "Негіздер",     "Basics",   "✨"),
-            ("Еда",       "Тамақ",        "Food",     "🍎"),
-            ("Действия",  "Іс-әрекеттер", "Actions",  "🏃"),
-            ("Чувства",   "Сезімдер",     "Feelings", "💛"),
-            ("Люди",      "Адамдар",      "People",   "👨‍👩‍👧"),
-            ("Места",     "Орындар",      "Places",   "🏠"),
-        ]
-        for cat in defaults {
-            _ = try await CategoryService.shared.createCategory(
-                name: cat.name,
-                nameKk: cat.nameKk,
-                nameEn: cat.nameEn,
-                icon: cat.icon
-            )
-        }
-    }
-
     private func saveCard() {
-        guard !cardName.isEmpty, let imgBase64 = imageBase64, let categoryId = selectedCategoryId else {
-            if selectedCategoryId == nil { errorMessage = LocalizationManager.shared.pleaseSelectCategory }
-            return
-        }
+        guard !cardName.isEmpty, let imgBase64 = imageBase64 else { return }
 
         isLoading = true
         errorMessage = nil
 
         Task {
             do {
+                // Если категория не выбрана — используем "Unassigned" (Без категории)
+                var categoryId = selectedCategoryId
+                if categoryId == nil {
+                    let allCats = localCategories.isEmpty
+                        ? (try? await CategoryService.shared.getCategories()) ?? []
+                        : localCategories
+                    categoryId = allCats.first { cat in
+                        cat.nameEn == "Unassigned" || cat.name == "Без категории"
+                    }?.id
+                }
+
                 let cardService = CardService.shared
                 if let existingId = generatedCardId {
                     // Карточка уже сохранена бэкендом — обновляем слово и категорию
@@ -1179,7 +1126,6 @@ private struct CardSaveStep: View {
                         categoryId: categoryId
                     )
                 }
-                await homeViewModel.loadRecentCards()
                 await homeViewModel.loadCategories()
                 if let category = homeViewModel.selectedCategory {
                     await homeViewModel.loadCards(for: category)
@@ -1202,7 +1148,7 @@ private struct CardSaveStep: View {
             let v = scalar.value
             if v >= 0x0400 && v <= 0x04FF { return "ru" }
         }
-        return "ru" // backend не поддерживает "en", fallback на ru
+        return "en"
     }
 }
 
@@ -1420,7 +1366,13 @@ struct CreateCategoryFlow: View {
         .presentationDragIndicator(.visible)
         .task {
             do {
-                unassignedCards = try await CardService.shared.getCards()
+                // Всегда свежие данные с API — кеш пропускаем
+                let freshCategories = try await CategoryService.shared.getCategories()
+                let unassignedCat = freshCategories.first { cat in
+                    cat.nameEn == "Unassigned" || cat.name == "Без категории"
+                }
+                guard let unassignedCat else { return }
+                unassignedCards = try await CardService.shared.getCards(categoryId: unassignedCat.id)
             } catch {
                 // silent — user sees empty list, can still name & save category
             }
@@ -1591,6 +1543,7 @@ private struct RealSelectableCardView: View {
     let onTap: () -> Void
     let onLongPress: () -> Void
     @State private var uiImage: UIImage? = nil
+    @ObservedObject private var l = LocalizationManager.shared
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -1611,7 +1564,7 @@ private struct RealSelectableCardView: View {
                         .padding(.horizontal, 6)
                         .padding(.top, 6)
                 }
-                Text(card.word)
+                Text(card.localizedWord(language: LocalizationManager.shared.currentLanguage))
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(Color("AppTextDark"))
                     .lineLimit(1)
@@ -1672,6 +1625,8 @@ private struct CategorySaveStep: View {
     @EnvironmentObject var homeViewModel: HomeViewModel
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var generateAICover = false
+    @State private var generatedCoverImage: UIImage? = nil
     let onSave: (Int, Category) -> Void
 
     var body: some View {
@@ -1700,7 +1655,15 @@ private struct CategorySaveStep: View {
 
                     // Превью категории с обложкой
                     ZStack(alignment: .bottom) {
-                        if let img = coverCard?.image {
+                        if let img = generatedCoverImage {
+                            Image(uiImage: img)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(height: 120)
+                                .clipped()
+                                .cornerRadius(18)
+                                .padding(.horizontal, 40)
+                        } else if let img = coverCard?.image {
                             Image(uiImage: img)
                                 .resizable()
                                 .scaledToFill()
@@ -1716,10 +1679,43 @@ private struct CategorySaveStep: View {
                         }
                         Text(categoryName.isEmpty ? l.newCategory : categoryName)
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(coverCard?.image != nil ? Color.white : Color("AppTextPrimary"))
+                            .foregroundColor((generatedCoverImage != nil || coverCard?.image != nil) ? Color.white : Color("AppTextPrimary"))
                             .padding(.horizontal, 12)
                             .padding(.bottom, 10)
                             .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 1)
+                    }
+
+                    // Переключатель AI-обложки (только если карточка-обложка не выбрана)
+                    if coverCard == nil {
+                        HStack(spacing: 10) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color(hex: "A78BFA").opacity(0.15))
+                                    .frame(width: 32, height: 32)
+                                Image(systemName: "wand.and.stars")
+                                    .font(.system(size: 15))
+                                    .foregroundColor(Color(hex: "A78BFA"))
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Generate AI cover")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Color("AppTextPrimary"))
+                                Text("Create an image based on category name")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(Color("AppTextSecondary"))
+                            }
+                            Spacer()
+                            Toggle("", isOn: $generateAICover)
+                                .labelsHidden()
+                                .tint(Color(hex: "A78BFA"))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color("AppSurface"))
+                        )
+                        .padding(.horizontal, 40)
                     }
 
                     if !selectedCardIds.isEmpty {
@@ -1770,15 +1766,27 @@ private struct CategorySaveStep: View {
                 var category = try await CategoryService.shared.createCategory(
                     name: categoryName, nameKk: nil, nameEn: nil, icon: nil
                 )
-                // Загружаем обложку если выбрана
+                // Загружаем обложку если выбрана карточка-обложка
                 if let coverBase64 = coverCard?.imageBase64, !coverBase64.isEmpty {
                     if let updated = try? await CategoryService.shared.uploadCover(categoryId: category.id, imageBase64: coverBase64) {
                         category = updated
                     }
+                } else if generateAICover {
+                    // Генерируем обложку через AI по названию категории
+                    if let updated = try? await CategoryService.shared.generateCover(categoryId: category.id, prompt: categoryName) {
+                        category = updated
+                        if let base64 = updated.coverImageBase64,
+                           let data = Data(base64Encoded: base64) {
+                            generatedCoverImage = UIImage(data: data)
+                        }
+                    }
                 }
-                // Назначаем выбранные карточки в новую категорию
-                for cardId in selectedCardIds {
-                    _ = try? await CardService.shared.updateCard(id: cardId, categoryId: category.id)
+                // Bulk переназначение выбранных карточек в новую категорию
+                if !selectedCardIds.isEmpty {
+                    try await CategoryService.shared.assignCards(
+                        categoryId: category.id,
+                        cardIds: Array(selectedCardIds)
+                    )
                 }
                 await homeViewModel.refreshCategories()
                 isLoading = false
@@ -2138,7 +2146,7 @@ struct CameraCardFlow: View {
                                 if let selId = selectedCategoryId,
                                    let cat = categories.first(where: { $0.id == selId }) {
                                     Text(cat.icon ?? "📁").font(.system(size: 20))
-                                    Text(cat.name)
+                                    Text(cat.localizedName(language: LocalizationManager.shared.currentLanguage))
                                         .font(.system(size: 15, weight: .medium))
                                         .foregroundColor(Color("AppTextPrimary"))
                                 } else {
@@ -2203,9 +2211,9 @@ struct CameraCardFlow: View {
                         }
                     }
                     .background(RoundedRectangle(cornerRadius: 18)
-                        .fill(cardWord.trimmingCharacters(in: .whitespaces).isEmpty || selectedCategoryId == nil
+                        .fill(cardWord.trimmingCharacters(in: .whitespaces).isEmpty
                               ? Color("AppTextHint") : Color(hex: "34D399")))
-                    .disabled(cardWord.trimmingCharacters(in: .whitespaces).isEmpty || selectedCategoryId == nil || isLoading)
+                    .disabled(cardWord.trimmingCharacters(in: .whitespaces).isEmpty || isLoading)
 
                     Button("Back") { step = .pickSource }
                         .foregroundColor(Color("AppTextHint"))
@@ -2225,14 +2233,21 @@ struct CameraCardFlow: View {
         defer { isLoading = false }
         do {
             let word = cardWord.trimmingCharacters(in: .whitespaces)
+            // Если категория не выбрана — используем системную "Сгенерированные"
+            var categoryId = selectedCategoryId
+            if categoryId == nil {
+                let allCats = try await CategoryService.shared.getCategories()
+                categoryId = allCats.first { cat in
+                    cat.nameEn == "Unassigned" || cat.name == "Без категории"
+                }?.id
+            }
             let card = try await CardService.shared.saveCard(
                 word: word,
                 language: detectLang(word),
                 translatedWord: word,
                 imageBase64: base64,
-                categoryId: selectedCategoryId
+                categoryId: categoryId
             )
-            await homeViewModel.loadRecentCards()
             CacheService.shared.saveCards([card])
             onDismissToHome?() ?? dismiss()
         } catch {
@@ -2256,16 +2271,25 @@ struct CategoryPickerSheet: View {
     @Binding var selectedName: String
     @Environment(\.dismiss) var dismiss
 
+    // Скрываем "Основы/Basics" и "Unassigned/Без категории" из списка
+    private var visibleCategories: [Category] {
+        categories.filter { cat in
+            let isBasics = cat.isSystem && cat.nameEn == "Basics"
+            let isUnassigned = cat.nameEn == "Unassigned" || cat.name == "Без категории"
+            return !isBasics && !isUnassigned
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
                 Color("AppBg").ignoresSafeArea()
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 8) {
-                        ForEach(categories) { cat in
+                        ForEach(visibleCategories) { cat in
                             Button {
                                 selectedId = cat.id
-                                selectedName = cat.name
+                                selectedName = cat.localizedName(language: LocalizationManager.shared.currentLanguage)
                                 dismiss()
                             } label: {
                                 HStack(spacing: 14) {
@@ -2276,7 +2300,7 @@ struct CategoryPickerSheet: View {
                                         Text(cat.icon ?? "📁")
                                             .font(.system(size: 22))
                                     }
-                                    Text(cat.name)
+                                    Text(cat.localizedName(language: LocalizationManager.shared.currentLanguage))
                                         .font(.system(size: 16, weight: .medium))
                                         .foregroundColor(Color("AppTextPrimary"))
                                     Spacer()
