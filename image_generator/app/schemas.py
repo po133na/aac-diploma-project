@@ -166,6 +166,9 @@ class CardResponse(BaseModel):
     word: str
     language: str
     translated_word: str
+    word_ru: Optional[str] = None
+    word_kk: Optional[str] = None
+    word_en: Optional[str] = None
     image_base64: str
     is_favorite: bool
     usage_count: int

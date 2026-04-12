@@ -46,6 +46,9 @@ class Card(Base):
     word = Column(String(255), nullable=False)
     language = Column(String(10), nullable=False)
     translated_word = Column(String(255), nullable=False)
+    word_ru = Column(String(255), nullable=True)
+    word_kk = Column(String(255), nullable=True)
+    word_en = Column(String(255), nullable=True)
     image_base64 = Column(Text, nullable=False)
     is_favorite = Column(Boolean, default=False)
     usage_count = Column(Integer, default=0)  # Счётчик использований

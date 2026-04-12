@@ -24,6 +24,17 @@ async def init_db():
             except Exception:
                 pass  # таблица или sequence уже существуют
 
+        # Миграции — добавляем новые колонки если их нет
+        for col in ["word_ru", "word_kk", "word_en"]:
+            try:
+                await conn.execute(
+                    __import__("sqlalchemy").text(
+                        f"ALTER TABLE cards ADD COLUMN IF NOT EXISTS {col} VARCHAR(255)"
+                    )
+                )
+            except Exception:
+                pass
+
 
 async def get_session():
     async with async_session() as session:
