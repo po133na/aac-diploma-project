@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from datetime import datetime, timedelta, date, timezone
 from io import BytesIO
 from pathlib import Path
@@ -544,7 +544,15 @@ async def delete_category(
     
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
-    
+
+    # Перенести карточки в Unassigned
+    unassigned = await _get_or_create_unassigned_category(session, current_user.id)
+    await session.execute(
+        update(Card)
+        .where(Card.category_id == category_id)
+        .values(category_id=unassigned.id)
+    )
+
     session.add(DeletedItem(entity_type="category", entity_id=category_id, user_id=current_user.id))
     await session.delete(category)
     await session.commit()
