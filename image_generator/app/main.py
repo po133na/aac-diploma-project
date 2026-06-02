@@ -635,10 +635,11 @@ async def generate_category_cover(
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
-    subject = body.prompt if body.prompt else (category.name_en or category.name)
+    subject = body.prompt if body.prompt else (category.name_en or category.name_kk or category.name)
 
     try:
-        category.cover_image_base64 = await _generate_image(f"{subject}, {IMAGE_STYLE_PROMPT}")
+        translated_subject = subject if category.name_en and not body.prompt else await translate_to_english(subject, "auto")
+        category.cover_image_base64 = await _generate_image(f"{translated_subject}, {IMAGE_STYLE_PROMPT}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
