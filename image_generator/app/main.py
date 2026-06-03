@@ -440,6 +440,17 @@ async def delete_account(
     current_user: User = Depends(get_current_user)
 ):
     """Удалить аккаунт пользователя"""
+    uid = current_user.id
+
+    await session.execute(delete(DailyCardLog).where(DailyCardLog.user_id == uid))
+    await session.execute(delete(DailyUsage).where(DailyUsage.user_id == uid))
+    await session.execute(delete(UserCardUsage).where(UserCardUsage.user_id == uid))
+    await session.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == uid))
+    await session.execute(delete(DeletedItem).where(DeletedItem.user_id == uid))
+    await session.execute(delete(Phrase).where(Phrase.user_id == uid))
+    await session.execute(delete(Card).where(Card.user_id == uid))
+    await session.execute(delete(Category).where(Category.user_id == uid))
+    await session.execute(delete(UserSettings).where(UserSettings.user_id == uid))
     await session.delete(current_user)
     await session.commit()
     return MessageResponse(message="Account deleted")
