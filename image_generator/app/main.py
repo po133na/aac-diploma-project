@@ -1007,6 +1007,41 @@ async def delete_card(
 
 # ==================== ОЗВУЧКА (TTS) ====================
 
+@app.post("/tts/card/{card_id}", response_model=TTSResponse)
+async def speak_card(
+    card_id: int,
+    language: str = Query("ru", description="Язык интерфейса: ru, kk, en"),
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Озвучить карточку: системные — на языке интерфейса, пользовательские — на языке карточки"""
+    result = await session.execute(
+        select(Card).where(
+            Card.id == card_id,
+            (Card.user_id == current_user.id) | (Card.user_id == None)
+        )
+    )
+    card = result.scalar_one_or_none()
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+
+    if card.user_id is None:
+        # Системная карточка — берём слово на языке интерфейса
+        word_map = {"ru": card.word_ru, "kk": card.word_kk, "en": card.word_en}
+        text = word_map.get(language) or card.word_en or card.word
+        voice_lang = language
+    else:
+        # Пользовательская карточка — читаем голосом языка карточки
+        text = card.word
+        voice_lang = card.language if card.language in ("ru", "kk", "en") else "ru"
+
+    try:
+        audio_base64 = await text_to_speech(text, voice_lang)
+        return TTSResponse(audio_base64=audio_base64)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/tts", response_model=TTSResponse)
 async def speak(
     tts_data: TTSRequest,
