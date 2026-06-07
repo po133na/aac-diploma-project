@@ -15,9 +15,10 @@ SYSTEM_CARDS_DIR = Path(__file__).parent / "system_cards"
 
 def _load_card_image(word_en: str) -> str:
     """Загружает изображение из system_cards по английскому слову, возвращает base64."""
-    path = SYSTEM_CARDS_DIR / f"{word_en.lower()}.jpeg"
-    if path.exists():
-        return base64.b64encode(path.read_bytes()).decode("utf-8")
+    for ext in ("png", "PNG", "jpeg", "jpg", "JPEG", "JPG"):
+        path = SYSTEM_CARDS_DIR / f"{word_en.lower()}.{ext}"
+        if path.exists():
+            return base64.b64encode(path.read_bytes()).decode("utf-8")
     return None
 
 from huggingface_hub import InferenceClient
@@ -133,43 +134,49 @@ async def create_default_categories(session: AsyncSession):
             select(Card).where(Card.category_id == basics_category.id, Card.user_id == None).limit(1)
         )).scalar_one_or_none()
 
-        if not basics_cards_exist:
-            # (word_en, word_ru, word_kk, color)
-            basics_words = [
-                ("I", "Я", "Мен", (173, 216, 230)),
-                ("You", "Ты", "Сен", (144, 238, 144)),
-                ("Want", "Хочу", "Қалаймын", (255, 255, 153)),
-                ("Need", "Нужно", "Керек", (255, 200, 150)),
-                ("Help", "Помощь", "Көмек", (255, 182, 193)),
-                ("Yes", "Да", "Иә", (144, 238, 144)),
-                ("No", "Нет", "Жоқ", (255, 160, 160)),
-                ("Please", "Пожалуйста", "Өтінемін", (200, 160, 220)),
-                ("Listen", "Слушать", "Тыңда", (160, 220, 220)),
-                ("Eat", "Есть", "Жеу", (255, 255, 153)),
-                ("Drink", "Пить", "Ішу", (173, 216, 230)),
-                ("Play", "Играть", "Ойнау", (144, 238, 144)),
-                ("Sleep", "Спать", "Ұйықтау", (200, 160, 220)),
-                ("Go", "Идти", "Бару", (255, 200, 150)),
-                ("Read", "Читать", "Оқу", (173, 216, 230)),
-                ("Watch", "Смотреть", "Қарау", (144, 238, 144)),
-                ("Draw", "Рисовать", "Сурет салу", (255, 182, 193)),
-                ("Sing", "Петь", "Ән салу", (255, 255, 153)),
-                ("Dance", "Танцевать", "Билеу", (255, 200, 150)),
-                ("Jump", "Прыгать", "Секіру", (160, 220, 220)),
-            ]
-            for word_en, word_ru, word_kk, color in basics_words:
-                image = _load_card_image(word_en) or _make_card_image(color)
-                session.add(Card(
-                    word=word_en,
-                    language="en",
-                    translated_word=word_en,
-                    word_en=word_en,
-                    word_ru=word_ru,
-                    word_kk=word_kk,
-                    image_base64=image,
-                    category_id=basics_category.id,
-                    user_id=None,
-                ))
+        basics_words = [
+            ("I", "Я", "Мен", (173, 216, 230)),
+            ("You", "Ты", "Сен", (144, 238, 144)),
+            ("Want", "Хочу", "Қалаймын", (255, 255, 153)),
+            ("Need", "Нужно", "Керек", (255, 200, 150)),
+            ("Help", "Помочь", "Көмек", (255, 182, 193)),
+            ("Yes", "Да", "Иә", (144, 238, 144)),
+            ("No", "Нет", "Жоқ", (255, 160, 160)),
+            ("Please", "Пожалуйста", "Өтінемін", (200, 160, 220)),
+            ("Listen", "Слушать", "Тыңда", (160, 220, 220)),
+            ("Eat", "Есть", "Жеу", (255, 255, 153)),
+            ("Drink", "Пить", "Ішу", (173, 216, 230)),
+            ("Play", "Играть", "Ойнау", (144, 238, 144)),
+            ("Sleep", "Спать", "Ұйықтау", (200, 160, 220)),
+            ("Go", "Идти", "Бару", (255, 200, 150)),
+            ("Read", "Читать", "Оқу", (173, 216, 230)),
+            ("Watch", "Смотреть", "Қарау", (144, 238, 144)),
+            ("Draw", "Рисовать", "Сурет салу", (255, 182, 193)),
+            ("Sing", "Петь", "Ән салу", (255, 255, 153)),
+            ("Dance", "Танцевать", "Билеу", (255, 200, 150)),
+            ("Jump", "Прыгать", "Секіру", (160, 220, 220)),
+        ]
+        for word_en, word_ru, word_kk, color in basics_words:
+            existing_card = (await session.execute(
+                select(Card).where(Card.word == word_en, Card.user_id == None)
+            )).scalar_one_or_none()
+            loaded_image = _load_card_image(word_en)
+            if existing_card:
+                if loaded_image and existing_card.image_base64 != loaded_image:
+                    existing_card.image_base64 = loaded_image
+                continue
+            image = loaded_image or _make_card_image(color)
+            session.add(Card(
+                word=word_en,
+                language="en",
+                translated_word=word_en,
+                word_en=word_en,
+                word_ru=word_ru,
+                word_kk=word_kk,
+                image_base64=image,
+                category_id=basics_category.id,
+                user_id=None,
+            ))
 
     await session.commit()
 
