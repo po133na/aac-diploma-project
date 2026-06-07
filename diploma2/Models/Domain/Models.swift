@@ -122,6 +122,23 @@ struct Card: Identifiable, Codable, Equatable {
         }
     }
 
+    // Слово И язык для TTS: если перевод на язык UI существует → используем его.
+    // Если нет — возвращаем оригинальное слово с оригинальным языком карточки.
+    // Это гарантирует что казахская карточка без перевода произносится казахским голосом
+    // даже при русском интерфейсе.
+    func ttsInfo(uiLanguage: AppLanguage) -> (text: String, language: AppLanguage) {
+        switch uiLanguage {
+        case .russian:
+            if let ru = wordRu { return (ru, .russian) }
+        case .kazakh:
+            if let kk = wordKk { return (kk, .kazakh) }
+        case .english:
+            if let en = wordEn { return (en, .english) }
+        }
+        let cardLang = AppLanguage(rawValue: language) ?? uiLanguage
+        return (word, cardLang)
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, word, language
         case wordRu         = "word_ru"
@@ -135,6 +152,47 @@ struct Card: Identifiable, Codable, Equatable {
         case userId         = "user_id"
         case createdAt      = "created_at"
         case updatedAt      = "updated_at"
+    }
+
+    // Кастомный init: image_base64 может прийти null для системных карточек
+    init(from decoder: Decoder) throws {
+        let c        = try decoder.container(keyedBy: CodingKeys.self)
+        id           = try c.decode(Int.self,    forKey: .id)
+        word         = try c.decode(String.self, forKey: .word)
+        wordRu       = try c.decodeIfPresent(String.self, forKey: .wordRu)
+        wordKk       = try c.decodeIfPresent(String.self, forKey: .wordKk)
+        wordEn       = try c.decodeIfPresent(String.self, forKey: .wordEn)
+        language     = try c.decode(String.self, forKey: .language)
+        translatedWord = (try? c.decode(String.self, forKey: .translatedWord)) ?? ""
+        imageBase64  = (try? c.decode(String.self, forKey: .imageBase64)) ?? ""
+        isFavorite   = (try? c.decode(Bool.self,   forKey: .isFavorite))   ?? false
+        usageCount   = (try? c.decode(Int.self,    forKey: .usageCount))   ?? 0
+        categoryId   = try c.decodeIfPresent(Int.self, forKey: .categoryId)
+        userId       = try c.decodeIfPresent(Int.self, forKey: .userId)
+        createdAt    = (try? c.decode(Date.self, forKey: .createdAt)) ?? Date()
+        updatedAt    = try c.decodeIfPresent(Date.self, forKey: .updatedAt)
+    }
+
+    // Явный memberwise init (нужен т.к. добавили custom decoder)
+    init(id: Int, word: String, wordRu: String? = nil, wordKk: String? = nil,
+         wordEn: String? = nil, language: String, translatedWord: String,
+         imageBase64: String, isFavorite: Bool, usageCount: Int = 0,
+         categoryId: Int? = nil, userId: Int? = nil,
+         createdAt: Date = Date(), updatedAt: Date? = nil) {
+        self.id            = id
+        self.word          = word
+        self.wordRu        = wordRu
+        self.wordKk        = wordKk
+        self.wordEn        = wordEn
+        self.language      = language
+        self.translatedWord = translatedWord
+        self.imageBase64   = imageBase64
+        self.isFavorite    = isFavorite
+        self.usageCount    = usageCount
+        self.categoryId    = categoryId
+        self.userId        = userId
+        self.createdAt     = createdAt
+        self.updatedAt     = updatedAt
     }
 }
 
@@ -275,10 +333,36 @@ struct UserStats: Codable {
 struct TopCard: Codable {
     let id: Int
     let word: String
+    let wordRu: String?
+    let wordKk: String?
+    let wordEn: String?
     let usageCount: Int
-    
+
+    func localizedWord(language: AppLanguage) -> String {
+        switch language {
+        case .russian: return wordRu ?? word
+        case .kazakh:  return wordKk ?? word
+        case .english: return wordEn ?? word
+        }
+    }
+
+    func ttsInfo(uiLanguage: AppLanguage) -> (text: String, language: AppLanguage) {
+        switch uiLanguage {
+        case .russian:
+            if let ru = wordRu { return (ru, .russian) }
+        case .kazakh:
+            if let kk = wordKk { return (kk, .kazakh) }
+        case .english:
+            if let en = wordEn { return (en, .english) }
+        }
+        return (word, uiLanguage)
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, word
+        case wordRu     = "word_ru"
+        case wordKk     = "word_kk"
+        case wordEn     = "word_en"
         case usageCount = "usage_count"
     }
 }

@@ -49,7 +49,7 @@ struct SpeakEasyApp: App {
                         let word = components.queryItems?.first(where: { $0.name == "word" })?.value,
                         !word.isEmpty
                     else { return }
-                    Task { await TTSService.shared.speak(text: word, language: .russian) }
+                    Task { await TTSService.shared.speak(text: word, language: LocalizationManager.shared.currentLanguage) }
                 }
         }
         .modelContainer(CacheService.container)

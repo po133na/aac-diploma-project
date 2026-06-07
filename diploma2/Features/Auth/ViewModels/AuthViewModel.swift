@@ -19,6 +19,7 @@ final class AuthViewModel: ObservableObject {
     @Published var loginError: String?
     @Published var registerError: String?
     @Published var emailTakenError: String?
+    @Published var deleteAccountError: String?
 
     private let authService = AuthService()
     
@@ -120,6 +121,7 @@ final class AuthViewModel: ObservableObject {
     
     // После экрана успеха
     func completeRegistration() {
+        UserDefaults.standard.removeObject(forKey: "tutorial_done")
         isAuthenticated = true
     }
 
@@ -132,5 +134,26 @@ final class AuthViewModel: ObservableObject {
         loginError = nil
         registerError = nil
         emailTakenError = nil
+    }
+
+    // MARK: - Delete Account
+
+    func deleteAccount() async {
+        isLoading = true
+        defer { isLoading = false }
+        deleteAccountError = nil
+        do {
+            try await authService.deleteAccount()
+            authService.logout()
+            currentUser = nil
+            isAuthenticated = false
+        } catch APIError.unauthorized {
+            // Токен уже невалиден — аккаунт возможно удалён, выходим
+            authService.logout()
+            currentUser = nil
+            isAuthenticated = false
+        } catch {
+            deleteAccountError = error.localizedDescription
+        }
     }
 }

@@ -11,6 +11,7 @@ import SwiftUI
 struct LanguageSelectView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var localization: LocalizationManager
+    @Environment(\.colorScheme) var colorScheme
     var onLanguageSelected: () -> Void = {}
 
     private let languages: [LanguageOption] = [
@@ -51,7 +52,7 @@ struct LanguageSelectView: View {
                 Spacer()
                 Text("Unim")
                     .font(.system(size: 36, weight: .bold))
-                    .foregroundColor(Color(hex: "1C3F6E"))
+                    .foregroundColor(Color("AppTextPrimary"))
                     .padding(.top, 8)
                 Spacer()
             }

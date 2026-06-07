@@ -26,10 +26,16 @@ struct MainTabView: View {
 
             CustomTabBar(
                 selectedTab: $selectedTab,
-                onPlusTap: { showCreateSheet = true }
+                onPlusTap: { showCreateSheet = true },
+                onHomeTap: { homeViewModel.goBack() }
             )
+
+            TutorialOverlayView()
         }
         .ignoresSafeArea(edges: .bottom)
+        .onAppear {
+            TutorialManager.shared.startIfNeeded()
+        }
         .sheet(isPresented: $showCreateSheet) {
             CardManagerView(onDismissToHome: {
                 showCreateSheet = false
@@ -51,15 +57,17 @@ struct MainTabView: View {
 struct CustomTabBar: View {
     @Binding var selectedTab: TabRoute
     let onPlusTap: () -> Void
+    var onHomeTap: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 0) {
             // Home tab
             TabBarItem(
                 icon: "house.fill",
-                label: "Home",
+                label: LocalizationManager.shared.homeTab,
                 isSelected: selectedTab == .home
             ) {
+                onHomeTap?()
                 selectedTab = .home
             }
 
@@ -85,17 +93,20 @@ struct CustomTabBar: View {
                 }
             }
             .offset(y: -16)
+            .tutorialAnchor(.plusButton, yOffset: -16)
 
             Spacer()
-            
+
             // Settings tab
             TabBarItem(
                 icon: "gearshape.fill",
-                label: "Settings",
+                label: LocalizationManager.shared.settingsTab,
                 isSelected: selectedTab == .settings
             ) {
+                TutorialManager.shared.advance(from: .statsTab)
                 selectedTab = .settings
             }
+            .tutorialAnchor(.statsTab)
         }
         .padding(.horizontal, 40)
         .padding(.top, 12)

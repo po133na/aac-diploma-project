@@ -82,6 +82,9 @@ final class LocalizationManager: ObservableObject {
     var privacyPolicy:     String { s("privacy_policy") }
     var version:           String { s("version") }
     var logOut:            String { s("log_out") }
+    var logOutSubtitle:         String { s("log_out_subtitle") }
+    var deleteAccountTitle:     String { s("delete_account_title") }
+    var deleteAccountSubtitle:  String { s("delete_account_subtitle") }
     var deleteAccount:     String { s("delete_account") }
     var editProfile:       String { s("edit_profile") }
     var statistics:        String { s("statistics") }
@@ -147,11 +150,22 @@ final class LocalizationManager: ObservableObject {
     var pleaseSelectCategory:       String { s("please_select_category") }
     var createAnotherCard:          String { s("create_another_card") }
     var goToBoard:                  String { s("go_to_board") }
+    var stepOf:                     String { s("step_of") }
     var step1Label:                 String { s("step1_label") }
     var step2Label:                 String { s("step2_label") }
     var step3Label:                 String { s("step3_label") }
     var step4Label:                 String { s("step4_label") }
     var step5Label:                 String { s("step5_label") }
+    var step1PhotoLabel:            String { s("step1_photo_label") }
+    var step2PhotoLabel:            String { s("step2_photo_label") }
+    var tutorialPlus:               String { s("tutorial_plus") }
+    var tutorialSpeak:              String { s("tutorial_speak") }
+    var tutorialLongPress:          String { s("tutorial_long_press") }
+    var tutorialTap:                String { s("tutorial_tap") }
+    var tutorialClose:              String { s("tutorial_close") }
+    var tutorialStats:              String { s("tutorial_stats") }
+    var tutorialLanguage:           String { s("tutorial_language") }
+    var tutorialSkip:               String { s("tutorial_skip") }
     var categoryNameTitle:          String { s("category_name_title") }
     var giveUniqueName:             String { s("give_unique_name") }
     var enterTheName:               String { s("enter_the_name") }
@@ -165,11 +179,16 @@ final class LocalizationManager: ObservableObject {
     var step1CatLabel:              String { s("step1_cat_label") }
     var step2CatLabel:              String { s("step2_cat_label") }
     var step3CatLabel:              String { s("step3_cat_label") }
+    var step4CatLabel:              String { s("step4_cat_label") }
+    var categoryCoverTitle:         String { s("category_cover_title") }
+    var categoryCoverSubtitle:      String { s("category_cover_subtitle") }
     var creating:                   String { s("creating") }
     var createCategoryBtn:          String { s("create_category_btn") }
     var createAnotherCategory:      String { s("create_another_category") }
     var viewCategory:               String { s("view_category") }
     var newCategory:                String { s("new_category") }
+    var generateAICoverTitle:       String { s("generate_ai_cover_title") }
+    var generateAICoverSubtitle:    String { s("generate_ai_cover_subtitle") }
 
     // MARK: - Gallery
     var galleryTitle:           String { s("gallery_title") }
@@ -236,18 +255,58 @@ final class LocalizationManager: ObservableObject {
     var cancel:                 String { s("cancel_btn") }
     var save:                   String { s("save_btn") }
     var done:                   String { s("done_btn") }
+    var editBtn:                String { s("edit_btn") }
+    var backBtn:                String { s("back_btn") }
+    var homeTab:                String { s("home_tab") }
+    var settingsTab:            String { s("settings_tab") }
+    var emailUs:                String { s("email_us") }
+    var versionLabel:           String { s("version_label") }
+    var characters:             String { s("characters") }
+    var cardNameLabel:          String { s("card_name_label") }
+    var categoryLabel:          String { s("category_label") }
+    var cardExampleHint:        String { s("card_example_hint") }
+    var folderEmpty:            String { s("folder_empty") }
+    var folderAddHint:          String { s("folder_add_hint") }
+    var generatingCoverFor:     String { s("generating_cover_for") }
+    var generatingWait:         String { s("generating_wait") }
+    var passwordReqLength:      String { s("password_req_length") }
+    var passwordReqNumber:      String { s("password_req_number") }
+    var passwordReqUppercase:   String { s("password_req_uppercase") }
+    var noCardsAvailable:       String { s("no_cards_available") }
+    var createCardsFirst:       String { s("create_cards_first") }
+    var dayMon:                 String { s("day_mon") }
+    var dayTue:                 String { s("day_tue") }
+    var dayWed:                 String { s("day_wed") }
+    var dayThu:                 String { s("day_thu") }
+    var dayFri:                 String { s("day_fri") }
+    var daySat:                 String { s("day_sat") }
+    var daySun:                 String { s("day_sun") }
     var continueBtn:            String { s("continue_btn") }
 
     // MARK: - Register Success
     var youreIn:                String { s("youre_in") }
     var accountCreated:         String { s("account_created") }
 
+    // MARK: - Settings Labels
+    var languageSetting:     String { s("language_setting") }
+    var lightMode:           String { s("light_mode") }
+    var darkMode:            String { s("dark_mode") }
+    var noCategoryHint:      String { s("no_category_hint") }
+    var savedTo:             String { s("saved_to") }
+    var unassignedCategory:  String { s("unassigned_category") }
+    var changePhoto:         String { s("change_photo") }
+    var removePhotoBtn:      String { s("remove_photo_btn") }
+    var removePhotoConfirm:  String { s("remove_photo_confirm") }
+
     // MARK: - Category / Card Actions
-    var deleteCategoryBtn:      String { s("delete_category_btn") }
-    var renameCard:             String { s("rename_card") }
-    var cardNamePlaceholder:    String { s("card_name_placeholder") }
-    var deleteCard:             String { s("delete_card") }
-    var editCard:               String { s("edit_card") }
+    var deleteCategoryBtn:          String { s("delete_category_btn") }
+    var deleteCategorySubtitle:     String { s("delete_category_subtitle") }
+    var renameCard:                 String { s("rename_card") }
+    var cardNamePlaceholder:        String { s("card_name_placeholder") }
+    var deleteCard:                 String { s("delete_card") }
+    var deleteCardSubtitle:         String { s("delete_card_subtitle") }
+    var addCards:                   String { s("add_cards") }
+    var editCard:                   String { s("edit_card") }
 }
 
 // MARK: - AppRouter

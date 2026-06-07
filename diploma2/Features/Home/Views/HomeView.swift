@@ -8,6 +8,7 @@ struct HomeView: View {
 
     // ── Popup states (at HomeView level for full-screen overlay) ──
     @State private var cardForMenu: Card? = nil
+    @State private var cardForPreview: Card? = nil
     @State private var isRenamingCard = false
     @State private var newCardName = ""
     @State private var showDeleteCardConfirm = false
@@ -34,6 +35,9 @@ struct HomeView: View {
                         },
                         onDeleteCategoryTap: {
                             showDeleteCategoryConfirm = true
+                        },
+                        onCardLongPress: { card in
+                            cardForPreview = card
                         }
                     )
                     .transition(.move(edge: .trailing))
@@ -41,6 +45,14 @@ struct HomeView: View {
                     HomeContentView(viewModel: viewModel)
                         .transition(.move(edge: .leading))
                 }
+            }
+
+            // ── Card preview popup (long press) ──
+            if let card = cardForPreview {
+                CardPreviewPopup(card: card) {
+                    cardForPreview = nil
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
             }
 
             // ── Card action popup ──
@@ -64,17 +76,17 @@ struct HomeView: View {
                     }
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                .offset(y: -100)  // ← добавьте это
 
             }
 
             // ── Delete card confirmation ──
             if showDeleteCardConfirm {
-                let cardWord = newCardName // сохраняем слово перед очисткой
+                let cardWord = newCardName
+                let l = LocalizationManager.shared
                 DeleteConfirmModal(
-                    title: "Delete \"\(cardWord)?\"",
-                    subtitle: "This card will be permanently removed from your library.",
-                    buttonTitle: "Delete Card",
+                    title: "\(l.deleteCard) \"\(cardWord)?\"",
+                    subtitle: l.deleteCardSubtitle,
+                    buttonTitle: l.deleteCard,
                     onCancel: { showDeleteCardConfirm = false },
                     onConfirm: {
                         showDeleteCardConfirm = false
@@ -83,15 +95,18 @@ struct HomeView: View {
                         }
                     }
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ignoresSafeArea()
                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
             }
 
             // ── Delete category confirmation ──
             if showDeleteCategoryConfirm, let category = viewModel.selectedCategory {
+                let l = LocalizationManager.shared
                 DeleteConfirmModal(
-                    title: "Delete \"\(category.localizedName(language: LocalizationManager.shared.currentLanguage))?\"",
-                    subtitle: "Cards inside will move to Unassigned. This cannot be undone.",
-                    buttonTitle: "Delete Category",
+                    title: "\(l.deleteCategoryBtn) \"\(category.localizedName(language: l.currentLanguage))?\"",
+                    subtitle: l.deleteCategorySubtitle,
+                    buttonTitle: l.deleteCategoryBtn,
                     onCancel: { showDeleteCategoryConfirm = false },
                     onConfirm: {
                         showDeleteCategoryConfirm = false
@@ -99,10 +114,13 @@ struct HomeView: View {
                         viewModel.goBack()
                     }
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ignoresSafeArea()
                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
             }
         }
         .animation(.easeInOut(duration: 0.2), value: cardForMenu?.id)
+        .animation(.easeInOut(duration: 0.2), value: cardForPreview?.id)
         .animation(.easeInOut(duration: 0.2), value: showDeleteCardConfirm)
         .animation(.easeInOut(duration: 0.2), value: showDeleteCategoryConfirm)
         .animation(.easeInOut(duration: 0.25), value: viewModel.selectedCategory?.id)
@@ -155,7 +173,10 @@ struct SentenceBuilderBar: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
-                Button { showSpeakSheet = true } label: {
+                Button {
+                    TutorialManager.shared.advance(from: .speakButton)
+                    showSpeakSheet = true
+                } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "speaker.wave.2.fill")
                             .font(.system(size: 12))
@@ -170,6 +191,7 @@ struct SentenceBuilderBar: View {
                     .background(Capsule().fill(isEmpty ? Color("AppTextHint") : Color(hex: "5BAECC")))
                 }
                 .disabled(isEmpty)
+                .tutorialAnchor(.speakButton)
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)
@@ -180,7 +202,7 @@ struct SentenceBuilderBar: View {
             ScrollView(.vertical, showsIndicators: false) {
                 FlowLayout(spacing: 8) {
                     ForEach(viewModel.tokens) { token in
-                        WordChip(word: token.word) {
+                        WordChip(word: token.localizedWord(language: localization.currentLanguage)) {
                             viewModel.removeToken(token)
                         }
                     }
@@ -213,7 +235,10 @@ struct SentenceBuilderBar: View {
             .onTapGesture { isTyping = true }
         }
         .background(Color(hex: "D6EEF8").opacity(0.55))
-        .sheet(isPresented: $showSpeakSheet) {
+        .sheet(isPresented: $showSpeakSheet, onDismiss: {
+            // Если модал закрыли свайпом (не кнопкой X), advance всё равно продвигает туториал
+            TutorialManager.shared.advance(from: .closeButton)
+        }) {
             ListenModalView(viewModel: viewModel)
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
@@ -225,11 +250,14 @@ struct ListenModalView: View {
     @ObservedObject var viewModel: HomeViewModel
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var localization: LocalizationManager
-    @State private var manualText: String = ""
-    @FocusState private var isManualFocused: Bool
+    @ObservedObject private var tutorial = TutorialManager.shared
+
+    private var showCloseHint: Bool {
+        tutorial.isActive && tutorial.currentStep == .closeButton
+    }
 
     private var allWords: [String] {
-        var words = viewModel.tokens.map { $0.word }
+        var words = viewModel.tokens.map { $0.localizedWord(language: localization.currentLanguage) }
         let typed = viewModel.typedText.trimmingCharacters(in: .whitespaces)
         if !typed.isEmpty { words.append(typed) }
         return words
@@ -237,9 +265,10 @@ struct ListenModalView: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            Color(hex: "D6EEF8").ignoresSafeArea()
+            Color("AppBg").ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 16) {
+
 
                 // ── Заголовок ──
                 HStack(spacing: 12) {
@@ -264,9 +293,9 @@ struct ListenModalView: View {
                 .padding(.top, 20)
                 .padding(.horizontal, 20)
 
-                // ── Белый блок с токенами + текстовый ввод ──
-                VStack(alignment: .leading, spacing: 12) {
-                    if !allWords.isEmpty {
+                // ── Белый блок с токенами ──
+                if !allWords.isEmpty {
+                    ScrollView(.vertical, showsIndicators: false) {
                         FlowLayout(spacing: 8) {
                             ForEach(allWords, id: \.self) { word in
                                 Text(word)
@@ -276,44 +305,21 @@ struct ListenModalView: View {
                                     .padding(.vertical, 10)
                                     .background(
                                         Capsule()
-                                            .fill(Color(hex: "EAF6FB"))
+                                            .fill(Color(hex: "5BAECC").opacity(0.15))
                                     )
                             }
                         }
+                        .padding(.bottom, 4)
                     }
-
-                    // Поле ручного ввода внутри белого блока
-                    HStack(spacing: 8) {
-                        TextField(
-                            localization.typeToSpeak,
-                            text: $manualText
-                        )
-                        .font(.system(size: 15))
-                        .foregroundColor(Color("AppTextPrimary"))
-                        .focused($isManualFocused)
-                        .submitLabel(.done)
-                        .onSubmit { speakManual() }
-
-                        if !manualText.trimmingCharacters(in: .whitespaces).isEmpty {
-                            Button { speakManual() } label: {
-                                Image(systemName: "speaker.wave.2.fill")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.white)
-                                    .frame(width: 32, height: 32)
-                                    .background(Circle().fill(Color(hex: "5BAECC")))
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 4)
+                    .frame(maxHeight: 160)
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(Color("AppSurface"))
+                            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+                    )
+                    .padding(.horizontal, 16)
                 }
-                .frame(maxWidth: .infinity, minHeight: 180, alignment: .topLeading)
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color("AppSurface"))
-                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
-                )
-                .padding(.horizontal, 16)
 
                 Spacer()
 
@@ -335,32 +341,51 @@ struct ListenModalView: View {
                 .padding(.bottom, 30)
             }
 
-            // ── Кнопка закрытия ──
-            Button { dismiss() } label: {
+            // ── Кнопка закрытия + подсветка туториала ──
+            VStack(alignment: .trailing, spacing: 6) {
                 ZStack {
-                    Circle()
-                        .fill(Color("AppSurface"))
-                        .frame(width: 36, height: 36)
-                        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(Color("AppTextSecondary"))
+                    // Подсветка для туториала
+                    if showCloseHint {
+                        Circle()
+                            .fill(Color(hex: "5BAECC").opacity(0.18))
+                            .frame(width: 56, height: 56)
+                    }
+                    Button {
+                        TutorialManager.shared.advance(from: .closeButton)
+                        dismiss()
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(Color("AppSurface"))
+                                .frame(width: 36, height: 36)
+                                .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(Color("AppTextSecondary"))
+                        }
+                    }
+                    // Регистрируем фрейм чтобы next() мог найти этот шаг
+                    .tutorialAnchor(.closeButton)
+                }
+
+                // Подсказка-тултип под кнопкой X
+                if showCloseHint {
+                    Text(LocalizationManager.shared.tutorialClose)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(Color("AppTextPrimary"))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(Color("AppSurface"))
+                                .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 3)
+                        )
                 }
             }
-            .padding(.top, 16)
-            .padding(.trailing, 16)
+            .padding(.top, 10)
+            .padding(.trailing, 10)
         }
         .onAppear { viewModel.speakSentence() }
-    }
-
-    private func speakManual() {
-        let text = manualText.trimmingCharacters(in: .whitespaces)
-        guard !text.isEmpty else { return }
-        isManualFocused = false
-        Task {
-            let lang = detectManualLanguage(text)
-            await TTSService.shared.speak(text: text, language: lang)
-        }
     }
 }
 // MARK: - Word Chip (слово из карточки — с обводкой)
@@ -385,7 +410,7 @@ struct WordChip: View {
         .background(
             Capsule()
                 .strokeBorder(Color(hex: "5BAECC"), lineWidth: 1.5)
-                .background(Capsule().fill(Color(hex: "EAF6FB")))
+                .background(Capsule().fill(Color("AppWordChipBg")))
         )
     }
 }
@@ -423,12 +448,20 @@ struct HomeContentView: View {
                     ProgressView().padding(.top, 40)
                 } else if !viewModel.categories.isEmpty {
                     VStack(spacing: 10) {
-                        ForEach(viewModel.categories) { category in
+                        ForEach(Array(viewModel.categories.enumerated()), id: \.element.id) { index, category in
                             RealCategoryRow(
                                 category: category,
-                                onTap: { viewModel.selectCategory(category) },
+                                onTap: {
+                                    if category.nameEn == "Basics" {
+                                        TutorialManager.shared.advance(from: .basicCategory)
+                                    }
+                                    viewModel.selectCategory(category)
+                                },
                                 onDelete: { viewModel.deleteCategory(category) }
                             )
+                            .if(category.nameEn == "Basics") { $0
+                                .tutorialAnchor(.basicCategory)
+                            }
                         }
                     }
                     .padding(.horizontal, 16)
@@ -648,6 +681,7 @@ struct RealCategoryDetailView: View {
     @ObservedObject var viewModel: HomeViewModel
     var onCardMinusTap: ((Card) -> Void)? = nil
     var onDeleteCategoryTap: (() -> Void)? = nil
+    var onCardLongPress: ((Card) -> Void)? = nil
 
     @State private var isEditing = false
     @State private var showAddCards = false  // ← добавить
@@ -681,7 +715,7 @@ struct RealCategoryDetailView: View {
                         Button {
                             withAnimation(.easeInOut(duration: 0.2)) { isEditing.toggle() }
                         } label: {
-                            Text(isEditing ? "Done" : "Edit")
+                            Text(isEditing ? l.done : l.editBtn)
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(isEditing ? .white : Color("AppTextPrimary"))
                                 .padding(.horizontal, 16)
@@ -701,14 +735,14 @@ struct RealCategoryDetailView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 12)
 
-                if isEditing {
+                if isEditing && category.nameEn != "Unassigned" {
                     Button { onDeleteCategoryTap?() } label: {
                         HStack(spacing: 10) {
                             ZStack {
                                 Circle().fill(Color.white.opacity(0.3)).frame(width: 30, height: 30)
                                 Image(systemName: "trash.fill").font(.system(size: 13)).foregroundColor(.white)
                             }
-                            Text("Delete \"\(category.localizedName(language: l.currentLanguage))\" category")
+                            Text("\(l.deleteCategoryBtn) \"\(category.localizedName(language: l.currentLanguage))\"")
                                 .font(.system(size: 15, weight: .semibold)).foregroundColor(.white)
                             Spacer()
                             Image(systemName: "arrow.right").font(.system(size: 13, weight: .semibold)).foregroundColor(.white)
@@ -726,14 +760,14 @@ struct RealCategoryDetailView: View {
                 } else {
                     LazyVGrid(columns: columns, spacing: 10) {
 
-                        // ── Кнопка Add Cards (только в режиме edit) ──
-                        if isEditing {
+                        // ── Кнопка Add Cards (только в режиме edit, не для Unassigned) ──
+                        if isEditing && category.nameEn != "Unassigned" {
                             Button { showAddCards = true } label: {
                                 VStack(spacing: 8) {
                                     Image(systemName: "plus")
                                         .font(.system(size: 24, weight: .semibold))
                                         .foregroundColor(Color(hex: "5BAECC"))
-                                    Text("Add Cards")
+                                    Text(l.addCards)
                                         .font(.system(size: 13, weight: .semibold))
                                         .foregroundColor(Color(hex: "5BAECC"))
                                 }
@@ -747,7 +781,7 @@ struct RealCategoryDetailView: View {
                                         )
                                         .background(
                                             RoundedRectangle(cornerRadius: 18)
-                                                .fill(Color(hex: "EAF6FB"))
+                                                .fill(Color("AppWordChipBg"))
                                         )
                                 )
                             }
@@ -755,17 +789,20 @@ struct RealCategoryDetailView: View {
                             .transition(.scale.combined(with: .opacity))
                         }
 
-                        ForEach(viewModel.cardsInCategory) { card in
+                        ForEach(Array(viewModel.cardsInCategory.enumerated()), id: \.element.id) { index, card in
                             RealCardTile(
                                 card: card,
                                 isEditing: isEditing,
                                 onTap: {
                                     if !isEditing {
+                                        TutorialManager.shared.advance(from: .tapCard)
                                         withAnimation(.spring(response: 0.3)) { viewModel.addCard(card) }
                                     }
                                 },
-                                onMinusTap: { onCardMinusTap?(card) }
+                                onMinusTap: { onCardMinusTap?(card) },
+                                onLongPress: { onCardLongPress?(card) }
                             )
+                            .if(index == 0) { $0.tutorialAnchor(.tapCard) }
                         }
                     }
                     .padding(.horizontal, 16)
@@ -823,11 +860,11 @@ private struct CardActionPopup: View {
                     Button(action: onClose) {
                         ZStack {
                             Circle()
-                                .fill(Color(hex: "F0F0F0"))
+                                .fill(Color("AppCloseButtonBg"))
                                 .frame(width: 30, height: 30)
                             Image(systemName: "xmark")
                                 .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(Color(hex: "888888"))
+                                .foregroundColor(Color("AppCloseButtonIcon"))
                         }
                     }
                 }
@@ -863,7 +900,7 @@ private struct CardActionPopup: View {
                             .padding(14)
                             .background(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(hex: "F5F5F5"))
+                                    .fill(Color("AppButtonSecondaryBg"))
                             )
                             .focused($nameFocused)
                             .onAppear { nameFocused = true }
@@ -900,13 +937,13 @@ private struct CardActionPopup: View {
                                         .font(.system(size: 16))
                                         .foregroundColor(Color(hex: "5BAECC"))
                                 }
-                                Text("Rename")
+                                Text(LocalizationManager.shared.renameCard)
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(Color("AppTextPrimary"))
                                 Spacer()
                             }
                             .padding(14)
-                            .background(RoundedRectangle(cornerRadius: 14).fill(Color(hex: "F5F5F5")))
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Color("AppButtonSecondaryBg")))
                         }
                         .buttonStyle(PlainButtonStyle())
 
@@ -920,13 +957,13 @@ private struct CardActionPopup: View {
                                         .font(.system(size: 16))
                                         .foregroundColor(Color(hex: "F87171"))
                                 }
-                                Text("Delete Card")
+                                Text(LocalizationManager.shared.deleteCard)
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(Color(hex: "F87171"))
                                 Spacer()
                             }
                             .padding(14)
-                            .background(RoundedRectangle(cornerRadius: 14).fill(Color(hex: "F5F5F5")))
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Color("AppButtonSecondaryBg")))
                         }
                         .buttonStyle(PlainButtonStyle())
                     }
@@ -936,10 +973,115 @@ private struct CardActionPopup: View {
             }
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color.white)
+                    .fill(Color("AppSurface"))
                     .shadow(color: .black.opacity(0.15), radius: 24, x: 0, y: 8)
             )
             .padding(.horizontal, 32)
+        }
+        .task {
+            let base64 = card.imageBase64
+            uiImage = await Task.detached(priority: .userInitiated) {
+                guard let data = Data(base64Encoded: base64) else { return UIImage?.none }
+                return UIImage(data: data)
+            }.value
+        }
+    }
+}
+
+// MARK: - Card Preview Popup (long press)
+
+private struct CardPreviewPopup: View {
+    let card: Card
+    let onClose: () -> Void
+
+    @State private var uiImage: UIImage? = nil
+    @State private var isSpeaking = false
+    @ObservedObject private var l = LocalizationManager.shared
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.45)
+                .ignoresSafeArea()
+                .onTapGesture { onClose() }
+
+            VStack(spacing: 0) {
+                // X кнопка
+                HStack {
+                    Spacer()
+                    Button(action: onClose) {
+                        ZStack {
+                            Circle()
+                                .fill(Color("AppCloseButtonBg"))
+                                .frame(width: 32, height: 32)
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(Color("AppCloseButtonIcon"))
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 20)
+
+                // Картинка
+                Group {
+                    if let img = uiImage {
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 200, height: 200)
+                            .cornerRadius(20)
+                            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
+                    } else {
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(Color("AppPlaceholderBg"))
+                            .frame(width: 200, height: 200)
+                            .overlay(ProgressView())
+                    }
+                }
+
+                // Название
+                Text(card.localizedWord(language: l.currentLanguage))
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(Color("AppTextPrimary"))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+
+                // Кнопка Speak
+                Button {
+                    isSpeaking = true
+                    let uiLang = LocalizationManager.shared.currentLanguage
+                    let (word, ttsLang) = card.ttsInfo(uiLanguage: uiLang)
+                    Task {
+                        await TTSService.shared.speakCard(id: card.id, language: ttsLang, fallbackText: word)
+                        isSpeaking = false
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: isSpeaking ? "waveform" : "speaker.wave.2.fill")
+                            .font(.system(size: 16))
+                        Text(l.speak)
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        Capsule()
+                            .fill(isSpeaking ? Color(hex: "5BAECC").opacity(0.7) : Color(hex: "5BAECC"))
+                    )
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 28)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(Color("AppSurface"))
+                    .shadow(color: .black.opacity(0.18), radius: 24, x: 0, y: 8)
+            )
+            .padding(.horizontal, 20)
         }
         .task {
             let base64 = card.imageBase64
@@ -958,6 +1100,7 @@ struct RealCardTile: View {
     var isEditing: Bool = false
     let onTap: () -> Void
     var onMinusTap: (() -> Void)? = nil
+    var onLongPress: (() -> Void)? = nil
     @State private var isPressed = false
     @State private var uiImage: UIImage? = nil
     @ObservedObject private var l = LocalizationManager.shared
@@ -1022,6 +1165,12 @@ struct RealCardTile: View {
                 .transition(.scale.combined(with: .opacity))
             }
         }
+        .highPriorityGesture(
+            LongPressGesture(minimumDuration: 0.5)
+                .onEnded { _ in
+                    if !isEditing { onLongPress?() }
+                }
+        )
         .task(id: card.id) {
             guard uiImage == nil else { return }
             let base64 = card.imageBase64
@@ -1075,8 +1224,9 @@ struct WordCardView: View {
 // MARK: - Quick Tip Banner
 
 struct QuickTipBanner: View {
+    @ObservedObject private var l = LocalizationManager.shared
+
     var body: some View {
-        let l = LocalizationManager.shared
         HStack(spacing: 10) {
             ZStack {
                 Circle().fill(Color(hex: "5BAECC")).frame(width: 32, height: 32)
@@ -1096,7 +1246,7 @@ struct QuickTipBanner: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color(hex: "E8F5FF"))
+                .fill(Color("AppTintBlue"))
         )
     }
 }
@@ -1188,18 +1338,6 @@ struct RecentCardTile: View {
     }
 }
 
-private func detectManualLanguage(_ text: String) -> AppLanguage {
-    let kazakhSpecific = CharacterSet(charactersIn: "әғқңөұүһӘҒҚҢӨҰҮҺ")
-    for scalar in text.unicodeScalars {
-        if kazakhSpecific.contains(scalar) { return .kazakh }
-    }
-    for scalar in text.unicodeScalars {
-        let v = scalar.value
-        if v >= 0x0400 && v <= 0x04FF { return .russian }
-    }
-    return .english
-}
-
 
 struct DeleteConfirmModal: View {
     let title: String
@@ -1221,11 +1359,11 @@ struct DeleteConfirmModal: View {
                     Button(action: onCancel) {
                         ZStack {
                             Circle()
-                                .fill(Color(hex: "F0F0F0"))
+                                .fill(Color("AppCloseButtonBg"))
                                 .frame(width: 30, height: 30)
                             Image(systemName: "xmark")
                                 .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(Color(hex: "888888"))
+                                .foregroundColor(Color("AppCloseButtonIcon"))
                         }
                     }
                 }
@@ -1246,7 +1384,7 @@ struct DeleteConfirmModal: View {
                 VStack(spacing: 8) {
                     Text(title)
                         .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(Color(hex: "1C3F6E"))
+                        .foregroundColor(Color("AppTextPrimary"))
                         .multilineTextAlignment(.center)
 
                     Text(subtitle)
@@ -1274,11 +1412,12 @@ struct DeleteConfirmModal: View {
             .padding(.horizontal, 16)
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color.white)
+                    .fill(Color("AppSurface"))
                     .shadow(color: .black.opacity(0.15), radius: 24, x: 0, y: 8)
             )
-            .padding(.horizontal, 40)
+            .padding(.horizontal, 32)
         }
+        .ignoresSafeArea()
     }
 }
 
@@ -1312,12 +1451,12 @@ struct AddCardsToCategory: View {
             // Хедер
             HStack {
                 Button { dismiss() } label: {
-                    Text("Cancel")
+                    Text(LocalizationManager.shared.cancel)
                         .foregroundColor(Color("AppTextSecondary"))
                         .font(.system(size: 15))
                 }
                 Spacer()
-                Text("Add Cards")
+                Text(LocalizationManager.shared.addCards)
                     .font(.system(size: 17, weight: .bold))
                     .foregroundColor(Color("AppTextPrimary"))
                 Spacer()
@@ -1336,7 +1475,7 @@ struct AddCardsToCategory: View {
                     if isSaving {
                         ProgressView().scaleEffect(0.8)
                     } else {
-                        Text(selectedIds.isEmpty ? "Done" : "Add (\(selectedIds.count))")
+                        Text(selectedIds.isEmpty ? LocalizationManager.shared.done : "\(LocalizationManager.shared.addCards) (\(selectedIds.count))")
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(selectedIds.isEmpty ? Color("AppTextHint") : Color(hex: "5BAECC"))
                     }
@@ -1358,10 +1497,10 @@ struct AddCardsToCategory: View {
                     Image(systemName: "rectangle.stack")
                         .font(.system(size: 40))
                         .foregroundColor(Color("AppTextHint"))
-                    Text("No cards available")
+                    Text(LocalizationManager.shared.noCardsAvailable)
                         .font(.system(size: 16))
                         .foregroundColor(Color("AppTextSecondary"))
-                    Text("Create new cards first")
+                    Text(LocalizationManager.shared.createCardsFirst)
                         .font(.system(size: 13))
                         .foregroundColor(Color("AppTextHint"))
                 }
@@ -1397,7 +1536,10 @@ struct AddCardsToCategory: View {
         }
         .background(Color("AppBg").ignoresSafeArea())
         .task {
-            allCards = (try? await CardService.shared.getCards()) ?? []
+            let categories = (try? await CategoryService.shared.getCategories()) ?? []
+            if let unassigned = categories.first(where: { $0.nameEn == "Unassigned" || $0.name == "Без категории" }) {
+                allCards = (try? await CardService.shared.getCards(categoryId: unassigned.id)) ?? []
+            }
             isLoading = false
         }
     }

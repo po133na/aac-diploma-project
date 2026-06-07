@@ -67,6 +67,8 @@ struct RegisterStep2View: View {
                                 Text(localization.staySafe)
                                     .font(.system(size: 26, weight: .bold))
                                     .foregroundColor(AuthColors.titleText)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.65)
 
                                 Text(allRequirementsMet
                                      ? localization.lookingGoodAlmost

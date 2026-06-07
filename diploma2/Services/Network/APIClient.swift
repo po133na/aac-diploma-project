@@ -209,14 +209,37 @@ final class APIClient {
         try await performRequest(path: path, method: method, body: nil as EmptyBody?, queryItems: queryItems, timeout: timeout)
     }
 
-    // MARK: - Void (DELETE и т.п.)
+    // MARK: - Void (DELETE и т.п.) — не декодирует тело, только проверяет статус
     func requestVoid(
         path: String,
         method: String = "DELETE",
         queryItems: [URLQueryItem]? = nil,
         timeout: TimeInterval = 15
     ) async throws {
-        let _: EmptyResponse = try await performRequest(path: path, method: method, body: nil as EmptyBody?, queryItems: queryItems, timeout: timeout)
+        var components = URLComponents(string: baseURL + path)!
+        if let queryItems { components.queryItems = queryItems }
+        guard let url = components.url else { throw APIError.invalidURL }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = method
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.timeoutInterval = timeout
+        if let token { urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+
+        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        guard let httpResponse = response as? HTTPURLResponse else { throw APIError.noData }
+
+        switch httpResponse.statusCode {
+        case 200...299: return
+        case 401:
+            clearToken()
+            throw APIError.unauthorized
+        case 400...499:
+            let detail = (try? JSONDecoder().decode(FastAPIError.self, from: data))?.detail ?? "Ошибка запроса"
+            throw APIError.serverError(httpResponse.statusCode, detail)
+        default:
+            throw APIError.serverError(httpResponse.statusCode, "Ошибка сервера")
+        }
     }
 
     // MARK: - Void с raw Data-телом (для PendingActionQueue)

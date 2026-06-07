@@ -11,11 +11,11 @@ import SwiftUI
 
 enum AuthColors {
     // Фон
-    static let gradientTop    = Color(hex: "C8E6E4")
-    static let gradientBottom = Color(hex: "D4EDF7")
+    static let gradientTop    = Color("AuthGradientTop")
+    static let gradientBottom = Color("AuthGradientBottom")
 
     // Карточка
-    static let card           = Color(hex: "EAF4F9").opacity(0.85)
+    static let card           = Color("AppSurface").opacity(0.92)
 
     // Текст
     static let titleText      = Color("AppTextPrimary")
@@ -29,16 +29,16 @@ enum AuthColors {
     static let fieldError     = Color(hex: "F87171")
 
     // Кнопки
-    static let buttonBlue     = Color(hex: "5BAECC")  // Step 1 / Login
-    static let buttonGreen    = Color(hex: "6DBF82")  // Step 2
-    static let buttonSalmon   = Color(hex: "F87171")  // Try Again (ошибка)
-    static let buttonDisabled = Color(hex: "C5D8E2")
+    static let buttonBlue     = Color(hex: "5BAECC")
+    static let buttonGreen    = Color(hex: "6DBF82")
+    static let buttonSalmon   = Color(hex: "F87171")
+    static let buttonDisabled = Color("AuthButtonDisabled")
 
     // Баннеры
-    static let errorBannerBg  = Color(hex: "FFE8E8")
-    static let errorBannerText = Color(hex: "D64545")
-    static let hintBannerBg   = Color(hex: "E8F5EC")
-    static let hintBannerText = Color("AppSuccessText")
+    static let errorBannerBg   = Color("AuthErrorBannerBg")
+    static let errorBannerText = Color("AuthErrorBannerText")
+    static let hintBannerBg    = Color("AuthHintBannerBg")
+    static let hintBannerText  = Color("AppSuccessText")
 
     // Бейдж Step
     static let stepBadge      = Color(hex: "5BAECC")
@@ -49,7 +49,7 @@ enum AuthColors {
     static let avatarSalmon   = Color(hex: "F4A59A")
 
     // Язык
-    static let languageRow    = Color.white.opacity(0.85)
+    static let languageRow    = Color("AppSurface")
 }
 
 // MARK: - Color hex init (помещается в Extensions/Color+Ext.swift)
@@ -133,7 +133,7 @@ struct StepBadge: View {
     let total: Int
 
     var body: some View {
-        Text("Step \(current)/\(total)")
+        Text(String(format: LocalizationManager.shared.stepOf, current, total))
             .font(.system(size: 13, weight: .semibold))
             .foregroundColor(.white)
             .padding(.horizontal, 14)
@@ -176,7 +176,7 @@ struct AuthBackButton: View {
                 .frame(width: 40, height: 40)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.white.opacity(0.85))
+                        .fill(Color("AppSurface"))
                         .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
                 )
         }
@@ -360,9 +360,9 @@ struct PasswordRequirementsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            RequirementRow(met: hasMinLength, text: "At least 8 characters")
-            RequirementRow(met: hasNumber,    text: "At least 1 number")
-            RequirementRow(met: hasUppercase, text: "At least 1 uppercase letter")
+            RequirementRow(met: hasMinLength, text: LocalizationManager.shared.passwordReqLength)
+            RequirementRow(met: hasNumber,    text: LocalizationManager.shared.passwordReqNumber)
+            RequirementRow(met: hasUppercase, text: LocalizationManager.shared.passwordReqUppercase)
         }
         .padding(14)
         .background(

@@ -58,62 +58,71 @@ struct CardManagerView: View {
 
                     // ── Create New Card ──
                     Button { showCreateCard = true } label: {
-                        HStack(spacing: 14) {
+                        HStack(spacing: 16) {
                             ZStack {
                                 Circle()
-                                    .fill(Color(hex: "F5A623").opacity(0.25))
-                                    .frame(width: 42, height: 42)
+                                    .fill(Color("AppSurface"))
+                                    .frame(width: 52, height: 52)
+                                    .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 2)
                                 Image(systemName: "plus")
-                                    .font(.system(size: 18, weight: .bold))
+                                    .font(.system(size: 20, weight: .bold))
                                     .foregroundColor(Color(hex: "F5A623"))
                             }
-                            VStack(alignment: .leading, spacing: 3) {
+                            VStack(alignment: .leading, spacing: 5) {
                                 Text(localization.createNewCard)
-                                    .font(.system(size: 16, weight: .bold))
+                                    .font(.system(size: 17, weight: .bold))
                                     .foregroundColor(Color("AppTextPrimary"))
                                 Text(localization.addCustomCardSubtitle)
-                                    .font(.system(size: 12))
+                                    .font(.system(size: 13))
                                     .foregroundColor(Color("AppTextSecondary"))
                             }
                             Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(Color("AppTextHint"))
                         }
-                        .padding(16)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 20)
                         .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color("AppTintYellow"))
-                                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(Color("AppSurface"))
+                                .shadow(color: .black.opacity(0.07), radius: 12, x: 0, y: 4)
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
+                    .padding(.bottom, 14)
 
                     // ── Create New Category ──
                     Button { showCreateCategory = true } label: {
-                        HStack(spacing: 14) {
+                        HStack(spacing: 16) {
                             ZStack {
                                 Circle()
-                                    .fill(Color(hex: "A78BFA").opacity(0.2))
-                                    .frame(width: 42, height: 42)
+                                    .fill(Color.white.opacity(0.25))
+                                    .frame(width: 52, height: 52)
                                 Image(systemName: "paintpalette.fill")
-                                    .font(.system(size: 16))
+                                    .font(.system(size: 18))
                                     .foregroundColor(Color(hex: "A78BFA"))
                             }
-                            VStack(alignment: .leading, spacing: 3) {
+                            VStack(alignment: .leading, spacing: 5) {
                                 Text(localization.createNewCategory)
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundColor(Color("AppTextPrimary"))
+                                    .font(.system(size: 17, weight: .bold))
+                                    .foregroundColor(Color("AppCategoryCardText"))
                                 Text(localization.createNewCategorySubtitle)
-                                    .font(.system(size: 12))
-                                    .foregroundColor(Color("AppTextSecondary"))
+                                    .font(.system(size: 13))
+                                    .foregroundColor(Color("AppCategoryCardSubtext"))
                             }
                             Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(Color("AppCategoryCardChevron"))
                         }
-                        .padding(16)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 20)
                         .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color("AppTintPurple"))
-                                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(Color("AppCategoryCardBg"))
+                                .shadow(color: Color(hex: "A78BFA").opacity(0.2), radius: 12, x: 0, y: 4)
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -243,10 +252,15 @@ enum CreateCardStep: Int, CaseIterable {
     case success = 6
 }
 
+private final class CreateCardCancellationToken: ObservableObject {
+    var isCancelled = false
+}
+
 struct CreateCardFlow: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var homeViewModel: HomeViewModel
     var onDismissToHome: (() -> Void)? = nil
+    @StateObject private var cancellationToken = CreateCardCancellationToken()
     @State private var step: CreateCardStep = .imageSource
     @State private var useAI = true
     @State private var imagePrompt = ""
@@ -262,10 +276,19 @@ struct CreateCardFlow: View {
     @State private var availableCategories: [Category] = []
     @State private var showCamera = false
     @State private var showLibrary = false
+    @ObservedObject private var l = LocalizationManager.shared
 
-    // Прогресс: 5 реальных шага (success не считается)
     private var progress: Double {
-        Double(step.rawValue) / 5.0
+        if useAI {
+            return Double(step.rawValue) / 5.0
+        } else {
+            switch step {
+            case .imageSource: return 1.0 / 3.0
+            case .nameCard:    return 2.0 / 3.0
+            case .saveCard:    return 1.0
+            default:           return 0.0
+            }
+        }
     }
 
     private func detectPromptLanguage(_ text: String) -> String {
@@ -289,6 +312,8 @@ struct CreateCardFlow: View {
         let word = imagePrompt
         let language = detectPromptLanguage(imagePrompt)
         let style = selectedStyle
+        cancellationToken.isCancelled = false  // сбрасываем флаг для новой попытки
+        let token = cancellationToken
 
         do {
             let response = try await Task.detached(priority: .userInitiated) {
@@ -299,6 +324,13 @@ struct CreateCardFlow: View {
                     style: style
                 )
             }.value
+
+            // Если юзер закрыл flow пока шла генерация — удаляем созданную карточку
+            if token.isCancelled {
+                Task { try? await CardService.shared.deleteCard(id: response.id) }
+                return false  // предотвращает вызов onSuccess() на закрытом sheet
+            }
+
             generatedImageBase64 = response.imageBase64
             generatedTranslatedWord = response.translatedWord
             generatedCardId = response.id
@@ -320,9 +352,10 @@ struct CreateCardFlow: View {
                     CreateFlowTopBar(
                         stepLabel: stepLabel,
                         progress: min(progress, 1.0),
-                        accentColor: Color(hex: "F87171"),
+                        accentColor: Color(hex: "1B3F6E"),
                         onBack: goBack,
                         onClose: {
+                            cancellationToken.isCancelled = true
                             deleteGeneratedCardIfNeeded()
                             dismiss()
                         }
@@ -351,6 +384,7 @@ struct CreateCardFlow: View {
                     CardPreviewStep(imageBase64: generatedImageBase64, onSave: {
                         step = .nameCard
                     }, onRegenerate: {
+                        deleteGeneratedCardIfNeeded()
                         step = .describeImage
                     })
                 case .nameCard:
@@ -407,14 +441,22 @@ struct CreateCardFlow: View {
     }
 
     private var stepLabel: String {
-        let l = LocalizationManager.shared
-        switch step {
-        case .imageSource:  return l.step1Label
-        case .describeImage: return l.step2Label
-        case .previewImage:  return l.step3Label
-        case .nameCard:     return l.step4Label
-        case .saveCard:     return l.step5Label
-        case .success:      return ""
+        if useAI {
+            switch step {
+            case .imageSource:   return l.step1Label
+            case .describeImage: return l.step2Label
+            case .previewImage:  return l.step3Label
+            case .nameCard:      return l.step4Label
+            case .saveCard:      return l.step5Label
+            case .success:       return ""
+            }
+        } else {
+            switch step {
+            case .imageSource:   return l.step1Label
+            case .nameCard:      return l.step1PhotoLabel
+            case .saveCard:      return l.step2PhotoLabel
+            default:             return ""
+            }
         }
     }
 
@@ -429,7 +471,9 @@ struct CreateCardFlow: View {
     private func goBack() {
         switch step {
         case .imageSource:   dismiss()
-        case .describeImage: step = .imageSource
+        case .describeImage:
+            cancellationToken.isCancelled = true
+            step = .imageSource
         case .previewImage:
             deleteGeneratedCardIfNeeded()
             step = .describeImage
@@ -447,22 +491,22 @@ private struct CardImageSourceStep: View {
     var onAI: () -> Void = {}
     var onCamera: () -> Void = {}
     var onLibrary: () -> Void = {}
+    @ObservedObject private var l = LocalizationManager.shared
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 24) {
                 // Иконка
                 ZStack {
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(Color("AppTintPurple"))
-                        .frame(width: 72, height: 72)
-                    Image(systemName: "photo.badge.plus")
-                        .font(.system(size: 30))
-                        .foregroundColor(Color(hex: "7C5CBF"))
-                }
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .fill(Color(hex: "C4B5FD"))
+                                        .frame(width: 72, height: 72)
+                                    Image(systemName: "photo.badge.plus")
+                                        .font(.system(size: 30))
+                                        .foregroundColor(.white)
+                                }
                 .padding(.top, 32)
 
-                let l = LocalizationManager.shared
                 VStack(spacing: 8) {
                     Text(l.addAnImage)
                         .font(.system(size: 22, weight: .bold))
@@ -475,11 +519,12 @@ private struct CardImageSourceStep: View {
                 // AI Magic
                 ImageSourceRow(
                     icon: "wand.and.stars",
-                    iconBg: Color("AppTintPurple"),
-                    iconFg: Color(hex: "7C5CBF"),
+                    iconBg: Color(hex: "A78BFA"),
+                    iconFg: .white,
                     title: l.aiMagic,
                     subtitle: l.describeAndAI,
-                    borderColor: Color("AppTintPurple")
+                    borderColor: Color("AppAIRowBorder"),
+                    rowBg: Color("AppAIRowBg")
                 ) {
                     useAI = true
                     onAI()
@@ -488,11 +533,12 @@ private struct CardImageSourceStep: View {
                 // Camera
                 ImageSourceRow(
                     icon: "camera.fill",
-                    iconBg: Color(hex: "34D399"),
+                    iconBg: Color(hex: "2B9BAF"),
                     iconFg: .white,
                     title: l.takeAPhotoCam,
                     subtitle: l.useYourCamera,
-                    borderColor: Color("AppTintGreen")
+                    borderColor: Color("AppPhotoRowBorder"),
+                    rowBg: Color("AppPhotoRowBg")
                 ) {
                     useAI = false
                     onCamera()
@@ -501,11 +547,12 @@ private struct CardImageSourceStep: View {
                 // Gallery
                 ImageSourceRow(
                     icon: "photo.on.rectangle",
-                    iconBg: Color(hex: "5BAECC"),
+                    iconBg: Color(hex: "2B9BAF"),
                     iconFg: .white,
                     title: l.chooseGalleryEmoji,
                     subtitle: l.pickFromLibrary,
-                    borderColor: Color("AppTintBlue")
+                    borderColor: Color("AppPhotoRowBorder"),
+                    rowBg: Color("AppPhotoRowBg")
                 ) {
                     useAI = false
                     onLibrary()
@@ -526,7 +573,9 @@ private struct ImageSourceRow: View {
     let title: String
     let subtitle: String
     let borderColor: Color
+    let rowBg: Color
     let onTap: () -> Void
+
 
     var body: some View {
         Button(action: onTap) {
@@ -554,7 +603,7 @@ private struct ImageSourceRow: View {
             .padding(16)
             .background(
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(Color("AppSurface"))
+                    .fill(rowBg)  // ← было Color("AppSurface"), должно быть rowBg
                     .overlay(
                         RoundedRectangle(cornerRadius: 18)
                             .stroke(borderColor, lineWidth: 1.5)
@@ -575,6 +624,7 @@ private struct CardDescribeStep: View {
     @Binding var errorMessage: String?
     let generateAction: () async -> Bool
     let onSuccess: () -> Void
+    @ObservedObject private var l = LocalizationManager.shared
     
     private let styles = [
         ("cartoon", "🎨 Cartoon", "Яркие цвета, простые линии"),
@@ -584,7 +634,6 @@ private struct CardDescribeStep: View {
     ]
 
     var body: some View {
-        let l = LocalizationManager.shared
         return VStack(spacing: 0) {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
@@ -629,11 +678,18 @@ private struct CardDescribeStep: View {
                                 .padding(10)
                                 .frame(height: 120)
                                 .background(Color.clear)
+                                .onChange(of: prompt) { _, new in
+                                    if new.count > 150 {
+                                        prompt = String(new.prefix(150))
+                                    }
+                                }
                         }
 
-                        Text("\(prompt.count)/150 characters")
+                        Text("\(prompt.count)/150 \(l.characters)")
                             .font(.system(size: 11))
                             .foregroundColor(Color("AppTextHint"))
+
+                        
                     }
                 }
                 .padding(.horizontal, 20)
@@ -677,7 +733,7 @@ private struct CardDescribeStep: View {
                     .padding(.vertical, 18)
                     .background(
                         RoundedRectangle(cornerRadius: 18)
-                            .fill(Color(hex: "5BAECC"))
+                            .fill(Color(hex: "29B6F6"))
                     )
                 }
                 .disabled(prompt.trimmingCharacters(in: .whitespaces).isEmpty || isLoading)
@@ -695,6 +751,7 @@ private struct CardPreviewStep: View {
     let imageBase64: String?
     let onSave: () -> Void
     let onRegenerate: () -> Void
+    @ObservedObject private var l = LocalizationManager.shared
 
     private var uiImage: UIImage? {
         guard let base64 = imageBase64,
@@ -706,17 +763,15 @@ private struct CardPreviewStep: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
                     // Иконка
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(Color("AppTintPurple"))
-                            .frame(width: 72, height: 72)
-                        Image(systemName: "photo.fill")
-                            .font(.system(size: 30))
-                            .foregroundColor(Color(hex: "7C5CBF"))
-                    }
-                    .padding(.top, 32)
+//                    ZStack {
+//                        RoundedRectangle(cornerRadius: 20)
+//                            .fill(Color("AppTintPurple"))
+//                            .frame(width: 72, height: 72)
+//                        Image(systemName: "photo.fill")
+//                            .font(.system(size: 30))
+//                            .foregroundColor(Color(hex: "7C5CBF"))
+//                    }
 
-                    let l = LocalizationManager.shared
                     VStack(spacing: 8) {
                         Text(l.imagePreview)
                             .font(.system(size: 22, weight: .bold))
@@ -725,6 +780,8 @@ private struct CardPreviewStep: View {
                             .font(.system(size: 14))
                             .foregroundColor(Color("AppTextSecondary"))
                     }
+                    .padding(.top, 32)
+
 
                     // Превью изображения
                     Group {
@@ -760,15 +817,15 @@ private struct CardPreviewStep: View {
                         Button(action: onRegenerate) {
                             Text(LocalizationManager.shared.regenerate)
                                 .font(.system(size: 17, weight: .semibold))
-                                .foregroundColor(Color(hex: "F87171"))
+                                .foregroundColor(.white)           // ← белый текст
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 18)
                                 .background(
                                     RoundedRectangle(cornerRadius: 18)
-                                        .fill(Color("AppSurface"))
+                                        .fill(Color(hex: "29B6F6")) // ← голубой, без рамки
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 18)
-                                                .stroke(Color(hex: "F87171"), lineWidth: 2)
+//                                                .stroke(Color(hex: "F87171"), lineWidth: 2)
                                         )
                                 )
                         }
@@ -787,6 +844,7 @@ private struct CardNameStep: View {
     @Binding var name: String
     let imageBase64: String?
     let onContinue: () -> Void
+    @ObservedObject private var l = LocalizationManager.shared
 
     private var uiImage: UIImage? {
         guard let base64 = imageBase64,
@@ -798,6 +856,17 @@ private struct CardNameStep: View {
         VStack(spacing: 0) {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
+                    
+                    VStack(spacing: 8) {
+                        Text(l.nameYourCard)
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(Color("AppTextPrimary"))
+                        Text(l.whatDoesThisRepresent)
+                            .font(.system(size: 14))
+                            .foregroundColor(Color("AppTextSecondary"))
+                    }
+                    .padding(.top, 32)  // ← перенеси сюда
+
                     // Превью сгенерированного изображения
                     Group {
                         if let uiImage = uiImage {
@@ -812,17 +881,8 @@ private struct CardNameStep: View {
                                 .frame(width: 120, height: 120)
                         }
                     }
-                    .padding(.top, 32)
 
-                    let l = LocalizationManager.shared
-                    VStack(spacing: 8) {
-                        Text(l.nameYourCard)
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(Color("AppTextPrimary"))
-                        Text(l.whatDoesThisRepresent)
-                            .font(.system(size: 14))
-                            .foregroundColor(Color("AppTextSecondary"))
-                    }
+
 
                     // Поле ввода
                     VStack(alignment: .trailing, spacing: 6) {
@@ -835,7 +895,7 @@ private struct CardNameStep: View {
                                     .fill(Color("AppSurface"))
                                     .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
                             )
-                        Text("\(name.count)/30 characters")
+                        Text("\(name.count)/30 \(l.characters)")
                             .font(.system(size: 11))
                             .foregroundColor(Color("AppTextHint"))
                     }
@@ -882,6 +942,7 @@ private struct CardSaveStep: View {
     @State private var errorMessage: String?
     @State private var showCategoryPicker = false
     let onSave: () -> Void
+    @ObservedObject private var l = LocalizationManager.shared
 
     private var displayCategories: [Category] {
         localCategories.isEmpty ? categories : localCategories
@@ -894,20 +955,12 @@ private struct CardSaveStep: View {
     }
 
     var body: some View {
-        let l = LocalizationManager.shared
         return VStack(spacing: 0) {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
                     // Check иконка
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(hex: "6DBF82"))
-                            .frame(width: 60, height: 60)
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 26, weight: .bold))
-                            .foregroundColor(.white)
-                    }
-                    .padding(.top, 32)
+                
+                    
 
                     VStack(spacing: 8) {
                         Text(l.readyToSave)
@@ -917,6 +970,7 @@ private struct CardSaveStep: View {
                             .font(.system(size: 14))
                             .foregroundColor(Color("AppTextSecondary"))
                     }
+                    .padding(.top, 32)
 
                     // Превью карточки с реальным изображением
                     VStack(spacing: 8) {
@@ -1031,7 +1085,7 @@ private struct CardSaveStep: View {
                         HStack(spacing: 6) {
                             Image(systemName: "info.circle")
                                 .font(.system(size: 12))
-                            Text("If no category is selected, the card will be saved to Unassigned")
+                            Text(l.noCategoryHint)
                                 .font(.system(size: 12))
                         }
                         .foregroundColor(Color("AppTextHint"))
@@ -1160,28 +1214,26 @@ private struct CardSuccessScreen: View {
     let imageBase64: String?
     let onCreateAnother: () -> Void
     let onGoToBoard: () -> Void
+    @ObservedObject private var l = LocalizationManager.shared
 
     private var uiImage: UIImage? {
         guard let base64 = imageBase64,
               let data = Data(base64Encoded: base64) else { return nil }
         return UIImage(data: data)
     }
-
     var body: some View {
-        let l = LocalizationManager.shared
         return VStack(spacing: 0) {
             Spacer()
 
-            VStack(spacing: 16) {
-                // Конфетти-иконка
+            VStack(spacing: 20) {
+ 
                 ZStack {
-                    Circle()
-                        .fill(Color("AppTintGreen"))
-                        .frame(width: 90, height: 90)
-                    Text("🎉")
-                        .font(.system(size: 44))
-                }
-
+                      Circle()
+                          .fill(Color("AppTintGreen"))
+                          .frame(width: 110, height: 110)  // ← крупнее
+                      Text("🎉")
+                          .font(.system(size: 54))         // ← крупнее
+                  }
                 VStack(spacing: 8) {
                     Text(l.cardSaved)
                         .font(.system(size: 26, weight: .bold))
@@ -1209,7 +1261,7 @@ private struct CardSuccessScreen: View {
                         Text(cardName.isEmpty ? "music" : cardName)
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(Color("AppTextPrimary"))
-                        Text("Saved to: \(categoryName.isEmpty ? "General" : categoryName)")
+                        Text("\(LocalizationManager.shared.savedTo) \(categoryName.isEmpty ? LocalizationManager.shared.unassignedCategory : categoryName)")
                             .font(.system(size: 12))
                             .foregroundColor(Color("AppTextSecondary"))
                     }
@@ -1222,6 +1274,8 @@ private struct CardSuccessScreen: View {
                         .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2)
                 )
                 .padding(.horizontal, 20)
+                .padding(.top, 8)  // ← небольшой отступ от текста
+
             }
 
             Spacer()
@@ -1261,6 +1315,8 @@ private struct CardSuccessScreen: View {
             .padding(.bottom, 40)
         }
     }
+
+   
 }
 
 
@@ -1270,6 +1326,8 @@ private struct CardSuccessScreen: View {
 
 enum CreateCategoryStep {
     case nameCategory
+    case generatingCover
+    case coverPreview
     case addCards
     case savingPreview
     case success
@@ -1282,28 +1340,36 @@ struct CreateCategoryFlow: View {
     var onViewCategory: ((Category) -> Void)? = nil
     @State private var step: CreateCategoryStep = .nameCategory
     @State private var categoryName = ""
+    @State private var galleryImageBase64: String? = nil
+    @State private var tempCreatedCategory: Category? = nil
     @State private var selectedCardIds: Set<Int> = []
     @State private var coverCardId: Int? = nil
     @State private var unassignedCards: [Card] = []
     @State private var createdCardCount = 0
     @State private var createdCategory: Category? = nil
+    @State private var generatedCoverBase64: String? = nil
+    @State private var generateTriggerCount = 0
+    @ObservedObject private var l = LocalizationManager.shared
 
     private var progress: Double {
         switch step {
-        case .nameCategory:  return 0.33
-        case .addCards:      return 0.66
-        case .savingPreview: return 1.0
-        case .success:       return 1.0
+        case .nameCategory:    return 0.25
+        case .generatingCover: return 0.50
+        case .coverPreview:    return 0.65
+        case .addCards:        return 0.80
+        case .savingPreview:   return 1.0
+        case .success:         return 1.0
         }
     }
 
     private var stepLabel: String {
-        let l = LocalizationManager.shared
         switch step {
-        case .nameCategory:  return l.step1CatLabel
-        case .addCards:      return l.step2CatLabel
-        case .savingPreview: return l.step3CatLabel
-        case .success:       return ""
+        case .nameCategory:    return l.step1CatLabel
+        case .generatingCover: return l.step2CatLabel
+        case .coverPreview:    return l.step2CatLabel
+        case .addCards:        return l.step3CatLabel
+        case .savingPreview:   return l.step4CatLabel
+        case .success:         return ""
         }
     }
 
@@ -1318,15 +1384,49 @@ struct CreateCategoryFlow: View {
                         progress: progress,
                         accentColor: Color(hex: "A78BFA"),
                         onBack: goBack,
-                        onClose: { dismiss() }
+                        onClose: {
+                            deleteTempCategoryIfNeeded()
+                            dismiss()
+                        }
                     )
                 }
 
                 switch step {
                 case .nameCategory:
                     CategoryNameStep(name: $categoryName) {
-                        step = .addCards
+                        generateTriggerCount += 1
+                        step = .generatingCover
                     }
+                case .generatingCover:
+                    CategoryGeneratingCoverStep(categoryName: categoryName)
+                        .task(id: generateTriggerCount) {
+                            await autoGenerateCover()
+                        }
+                case .coverPreview:
+                    CategoryCoverPreviewStep(
+                        imageBase64: generatedCoverBase64 ?? galleryImageBase64,
+                        categoryName: categoryName,
+                        onSave: { step = .addCards },
+                        onRegenerate: {
+                            galleryImageBase64 = nil
+                            generatedCoverBase64 = nil
+                            generateTriggerCount += 1
+                            step = .generatingCover
+                        },
+                        onChooseGallery: { base64 in
+                            galleryImageBase64 = base64
+                            generatedCoverBase64 = nil
+                            if let cat = tempCreatedCategory {
+                                Task {
+                                    if let updated = try? await CategoryService.shared.uploadCover(
+                                        categoryId: cat.id, imageBase64: base64
+                                    ) {
+                                        tempCreatedCategory = updated
+                                    }
+                                }
+                            }
+                        }
+                    )
                 case .addCards:
                     CategoryAddCardsStep(
                         cards: unassignedCards,
@@ -1339,20 +1439,32 @@ struct CreateCategoryFlow: View {
                     CategorySaveStep(
                         categoryName: categoryName,
                         selectedCardIds: selectedCardIds,
-                        coverCard: unassignedCards.first(where: { $0.id == coverCardId })
-                    ) { count, category in
+                        coverCard: unassignedCards.first(where: { $0.id == coverCardId }),
+                        galleryImageBase64: galleryImageBase64,
+                        existingCategory: tempCreatedCategory
+                    ) { count, category, coverBase64 in
                         createdCardCount = count
                         createdCategory = category
+                        generatedCoverBase64 = coverBase64
                         step = .success
                     }
                 case .success:
-                    CategorySuccessScreen(categoryName: categoryName, cardCount: createdCardCount, coverCard: unassignedCards.first(where: { $0.id == coverCardId })) {
+                    CategorySuccessScreen(
+                        categoryName: categoryName,
+                        cardCount: createdCardCount,
+                        coverCard: unassignedCards.first(where: { $0.id == coverCardId }),
+                        generatedCoverBase64: generatedCoverBase64
+                    ) {
                         step = .nameCategory
                         categoryName = ""
+                        galleryImageBase64 = nil
+                        tempCreatedCategory = nil
                         selectedCardIds = []
                         coverCardId = nil
                         createdCardCount = 0
                         createdCategory = nil
+                        generatedCoverBase64 = nil
+                        generateTriggerCount = 0
                     } onView: {
                         if let cat = createdCategory {
                             onViewCategory?(cat) ?? onDismissToHome?() ?? dismiss()
@@ -1381,11 +1493,49 @@ struct CreateCategoryFlow: View {
 
     private func goBack() {
         switch step {
-        case .nameCategory:  dismiss()
-        case .addCards:      step = .nameCategory
-        case .savingPreview: step = .addCards
-        case .success:       break
+        case .nameCategory:
+            dismiss()
+        case .generatingCover:
+            deleteTempCategoryIfNeeded()
+            step = .nameCategory
+        case .coverPreview:
+            galleryImageBase64 = nil
+            generatedCoverBase64 = nil
+            generateTriggerCount += 1
+            step = .generatingCover
+        case .addCards:
+            step = .coverPreview
+        case .savingPreview:
+            step = .addCards
+        case .success:
+            break
         }
+    }
+
+    private func deleteTempCategoryIfNeeded() {
+        guard let cat = tempCreatedCategory else { return }
+        Task { try? await CategoryService.shared.deleteCategory(id: cat.id) }
+        tempCreatedCategory = nil
+        generatedCoverBase64 = nil
+    }
+
+    private func autoGenerateCover() async {
+        do {
+            if tempCreatedCategory == nil {
+                let cat = try await CategoryService.shared.createCategory(
+                    name: categoryName, nameKk: nil, nameEn: nil, icon: nil
+                )
+                tempCreatedCategory = cat
+            }
+            let updated = try await CategoryService.shared.generateCover(
+                categoryId: tempCreatedCategory!.id, prompt: categoryName
+            )
+            tempCreatedCategory = updated
+            generatedCoverBase64 = updated.coverImageBase64
+        } catch {
+            // On failure still advance so user can choose from gallery
+        }
+        step = .coverPreview
     }
 }
 
@@ -1394,12 +1544,12 @@ struct CreateCategoryFlow: View {
 private struct CategoryNameStep: View {
     @Binding var name: String
     let onContinue: () -> Void
+    @ObservedObject private var l = LocalizationManager.shared
 
     var body: some View {
         VStack(spacing: 0) {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
-                    // T иконка
                     ZStack {
                         RoundedRectangle(cornerRadius: 20)
                             .fill(Color(hex: "A78BFA"))
@@ -1410,7 +1560,6 @@ private struct CategoryNameStep: View {
                     }
                     .padding(.top, 32)
 
-                    let l = LocalizationManager.shared
                     VStack(spacing: 8) {
                         Text(l.categoryNameTitle)
                             .font(.system(size: 22, weight: .bold))
@@ -1430,7 +1579,7 @@ private struct CategoryNameStep: View {
                                     .fill(Color("AppSurface"))
                                     .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
                             )
-                        Text("\(name.count)/20 characters")
+                        Text("\(name.count)/20 \(l.characters)")
                             .font(.system(size: 11))
                             .foregroundColor(Color("AppTextHint"))
                     }
@@ -1440,7 +1589,7 @@ private struct CategoryNameStep: View {
             }
 
             Button(action: onContinue) {
-                Text(LocalizationManager.shared.continueArrow)
+                Text(l.continueArrow)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -1458,13 +1607,153 @@ private struct CategoryNameStep: View {
     }
 }
 
-// MARK: - Category Step 2: Add Cards
+// MARK: - Category Step 2: Generating Cover
+
+private struct CategoryGeneratingCoverStep: View {
+    let categoryName: String
+    @ObservedObject private var l = LocalizationManager.shared
+
+    var body: some View {
+        VStack(spacing: 32) {
+            Spacer()
+
+            ZStack {
+                Circle()
+                    .fill(Color("AppTintPurple"))
+                    .frame(width: 90, height: 90)
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: Color(hex: "A78BFA")))
+                    .scaleEffect(1.4)
+            }
+
+            VStack(spacing: 10) {
+                Text(l.generatingCoverFor)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(Color("AppTextPrimary"))
+                Text("\"\(categoryName)\"...")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(Color(hex: "A78BFA"))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                Text(l.generatingWait)
+                    .font(.system(size: 14))
+                    .foregroundColor(Color("AppTextSecondary"))
+            }
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+
+// MARK: - Category Cover Preview (was CategoryAICoverPreviewStep)
+
+private struct CategoryCoverPreviewStep: View {
+    let imageBase64: String?
+    let categoryName: String
+    let onSave: () -> Void
+    let onRegenerate: () -> Void
+    let onChooseGallery: (String) -> Void
+    @State private var showLibrary = false
+    @ObservedObject private var l = LocalizationManager.shared
+
+    private var uiImage: UIImage? {
+        guard let base64 = imageBase64,
+              let data = Data(base64Encoded: base64) else { return nil }
+        return UIImage(data: data)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    if let img = uiImage {
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 240, height: 240)
+                            .clipShape(RoundedRectangle(cornerRadius: 24))
+                    } else {
+                        RoundedRectangle(cornerRadius: 24)
+                            .fill(Color("AppPlaceholderBg"))
+                            .frame(width: 240, height: 240)
+                    }
+
+                    Text(categoryName)
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(Color("AppTextPrimary"))
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 32)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
+            }
+
+            VStack(spacing: 12) {
+                Button(action: onSave) {
+                    Text(l.saveAndContinue)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
+                        .background(RoundedRectangle(cornerRadius: 18).fill(Color(hex: "6DBF82")))
+                }
+
+                Button(action: onRegenerate) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "wand.and.stars")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text(l.regenerate)
+                            .font(.system(size: 17, weight: .semibold))
+                    }
+                    .foregroundColor(Color(hex: "A78BFA"))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18)
+                            .fill(Color("AppSurface"))
+                            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(hex: "A78BFA"), lineWidth: 2))
+                    )
+                }
+
+                Button { showLibrary = true } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "photo.on.rectangle")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text(l.chooseGalleryEmoji)
+                            .font(.system(size: 17, weight: .semibold))
+                    }
+                    .foregroundColor(Color(hex: "5BAECC"))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18)
+                            .fill(Color("AppSurface"))
+                            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(hex: "5BAECC"), lineWidth: 2))
+                    )
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 32)
+        }
+        .sheet(isPresented: $showLibrary) {
+            PhotoPickerView(sourceType: .photoLibrary) { img in
+                let base64 = img.jpegData(compressionQuality: 0.8).map { $0.base64EncodedString() } ?? ""
+                onChooseGallery(base64)
+            }
+        }
+    }
+}
+
+// MARK: - Category Step 3: Add Cards
 
 private struct CategoryAddCardsStep: View {
     let cards: [Card]
     @Binding var selectedCardIds: Set<Int>
     @Binding var coverCardId: Int?
     let onNext: () -> Void
+    @ObservedObject private var l = LocalizationManager.shared
 
     let columns = [
         GridItem(.flexible(), spacing: 10),
@@ -1473,7 +1762,6 @@ private struct CategoryAddCardsStep: View {
     ]
 
     var body: some View {
-        let l = LocalizationManager.shared
         return VStack(spacing: 0) {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
@@ -1520,7 +1808,7 @@ private struct CategoryAddCardsStep: View {
             }
 
             Button(action: onNext) {
-                Text(selectedCardIds.isEmpty ? l.skipArrow : "Add \(selectedCardIds.count) Cards →")
+                Text(selectedCardIds.isEmpty ? l.skipArrow : "\(l.addCards) (\(selectedCardIds.count)) →")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -1622,15 +1910,28 @@ private struct CategorySaveStep: View {
     let categoryName: String
     let selectedCardIds: Set<Int>
     let coverCard: Card?
+    var galleryImageBase64: String? = nil
+    var existingCategory: Category? = nil
     @EnvironmentObject var homeViewModel: HomeViewModel
     @State private var isLoading = false
     @State private var errorMessage: String?
-    @State private var generateAICover = false
     @State private var generatedCoverImage: UIImage? = nil
-    let onSave: (Int, Category) -> Void
+    let onSave: (Int, Category, String?) -> Void
+    @ObservedObject private var l = LocalizationManager.shared
+
+    private var galleryThumbnail: UIImage? {
+        guard let b64 = galleryImageBase64,
+              let data = Data(base64Encoded: b64) else { return nil }
+        return UIImage(data: data)
+    }
+
+    private var existingCoverImage: UIImage? {
+        guard let b64 = existingCategory?.coverImageBase64,
+              let data = Data(base64Encoded: b64) else { return nil }
+        return UIImage(data: data)
+    }
 
     var body: some View {
-        let l = LocalizationManager.shared
         return VStack(spacing: 0) {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
@@ -1655,7 +1956,15 @@ private struct CategorySaveStep: View {
 
                     // Превью категории с обложкой
                     ZStack(alignment: .bottom) {
-                        if let img = generatedCoverImage {
+                        if let img = generatedCoverImage ?? existingCoverImage {
+                            Image(uiImage: img)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(height: 120)
+                                .clipped()
+                                .cornerRadius(18)
+                                .padding(.horizontal, 40)
+                        } else if let img = galleryThumbnail {
                             Image(uiImage: img)
                                 .resizable()
                                 .scaledToFill()
@@ -1673,49 +1982,16 @@ private struct CategorySaveStep: View {
                                 .padding(.horizontal, 40)
                         } else {
                             RoundedRectangle(cornerRadius: 18)
-                                .fill(Color("AppTintBlue"))
+                                .fill(Color("AppTintPurple"))
                                 .frame(height: 120)
                                 .padding(.horizontal, 40)
                         }
                         Text(categoryName.isEmpty ? l.newCategory : categoryName)
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor((generatedCoverImage != nil || coverCard?.image != nil) ? Color.white : Color("AppTextPrimary"))
+                            .foregroundColor((generatedCoverImage != nil || existingCoverImage != nil || galleryThumbnail != nil || coverCard?.image != nil) ? Color.white : Color("AppTextPrimary"))
                             .padding(.horizontal, 12)
                             .padding(.bottom, 10)
                             .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 1)
-                    }
-
-                    // Переключатель AI-обложки (только если карточка-обложка не выбрана)
-                    if coverCard == nil {
-                        HStack(spacing: 10) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color(hex: "A78BFA").opacity(0.15))
-                                    .frame(width: 32, height: 32)
-                                Image(systemName: "wand.and.stars")
-                                    .font(.system(size: 15))
-                                    .foregroundColor(Color(hex: "A78BFA"))
-                            }
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Generate AI cover")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(Color("AppTextPrimary"))
-                                Text("Create an image based on category name")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(Color("AppTextSecondary"))
-                            }
-                            Spacer()
-                            Toggle("", isOn: $generateAICover)
-                                .labelsHidden()
-                                .tint(Color(hex: "A78BFA"))
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(Color("AppSurface"))
-                        )
-                        .padding(.horizontal, 40)
                     }
 
                     if !selectedCardIds.isEmpty {
@@ -1763,21 +2039,23 @@ private struct CategorySaveStep: View {
         errorMessage = nil
         Task {
             do {
-                var category = try await CategoryService.shared.createCategory(
-                    name: categoryName, nameKk: nil, nameEn: nil, icon: nil
-                )
-                // Загружаем обложку если выбрана карточка-обложка
-                if let coverBase64 = coverCard?.imageBase64, !coverBase64.isEmpty {
-                    if let updated = try? await CategoryService.shared.uploadCover(categoryId: category.id, imageBase64: coverBase64) {
-                        category = updated
-                    }
-                } else if generateAICover {
-                    // Генерируем обложку через AI по названию категории
-                    if let updated = try? await CategoryService.shared.generateCover(categoryId: category.id, prompt: categoryName) {
-                        category = updated
-                        if let base64 = updated.coverImageBase64,
-                           let data = Data(base64Encoded: base64) {
-                            generatedCoverImage = UIImage(data: data)
+                var category: Category
+                if let existing = existingCategory {
+                    // Категория уже была создана на шаге AI preview
+                    category = existing
+                } else {
+                    category = try await CategoryService.shared.createCategory(
+                        name: categoryName, nameKk: nil, nameEn: nil, icon: nil
+                    )
+                    // Загружаем обложку из галереи
+                    if let galleryBase64 = galleryImageBase64, !galleryBase64.isEmpty {
+                        if let updated = try? await CategoryService.shared.uploadCover(categoryId: category.id, imageBase64: galleryBase64) {
+                            category = updated
+                        }
+                    // Загружаем обложку карточки-обложки
+                    } else if let coverBase64 = coverCard?.imageBase64, !coverBase64.isEmpty {
+                        if let updated = try? await CategoryService.shared.uploadCover(categoryId: category.id, imageBase64: coverBase64) {
+                            category = updated
                         }
                     }
                 }
@@ -1790,7 +2068,7 @@ private struct CategorySaveStep: View {
                 }
                 await homeViewModel.refreshCategories()
                 isLoading = false
-                onSave(selectedCardIds.count, category)
+                onSave(selectedCardIds.count, category, category.coverImageBase64)
             } catch {
                 errorMessage = error.localizedDescription
                 isLoading = false
@@ -1805,11 +2083,18 @@ private struct CategorySuccessScreen: View {
     let categoryName: String
     let cardCount: Int
     let coverCard: Card?
+    var generatedCoverBase64: String? = nil
     let onCreateAnother: () -> Void
     let onView: () -> Void
+    @ObservedObject private var l = LocalizationManager.shared
+
+    private var generatedCoverImage: UIImage? {
+        guard let base64 = generatedCoverBase64,
+              let data = Data(base64Encoded: base64) else { return nil }
+        return UIImage(data: data)
+    }
 
     var body: some View {
-        let l = LocalizationManager.shared
         return VStack(spacing: 0) {
             Spacer()
 
@@ -1833,6 +2118,12 @@ private struct CategorySuccessScreen: View {
 
                 HStack(spacing: 12) {
                     if let img = coverCard?.image {
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 52, height: 52)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    } else if let img = generatedCoverImage {
                         Image(uiImage: img)
                             .resizable()
                             .scaledToFill()
@@ -2099,7 +2390,7 @@ struct CameraCardFlow: View {
 
             Spacer()
 
-            Button("Cancel") { dismiss() }
+            Button(LocalizationManager.shared.cancel) { dismiss() }
                 .foregroundColor(Color("AppTextHint"))
                 .padding(.bottom, 32)
         }
@@ -2124,10 +2415,10 @@ struct CameraCardFlow: View {
 
                 // Поле названия
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Card name")
+                    Text(LocalizationManager.shared.cardNameLabel)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(Color("AppTextSecondary"))
-                    TextField("e.g. Apple, Dog, Happy...", text: $cardWord)
+                    TextField(LocalizationManager.shared.cardExampleHint, text: $cardWord)
                         .padding(14)
                         .background(RoundedRectangle(cornerRadius: 14).fill(Color("AppSurface")))
                 }
@@ -2136,7 +2427,7 @@ struct CameraCardFlow: View {
                 // Категория
                 if !categories.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Category")
+                        Text(LocalizationManager.shared.categoryLabel)
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(Color("AppTextSecondary"))
                         Button {
@@ -2152,7 +2443,7 @@ struct CameraCardFlow: View {
                                 } else {
                                     Image(systemName: "square.grid.2x2")
                                         .foregroundColor(Color("AppTextHint"))
-                                    Text("Select category")
+                                    Text(LocalizationManager.shared.selectCategory)
                                         .font(.system(size: 15))
                                         .foregroundColor(Color("AppTextHint"))
                                 }
@@ -2203,7 +2494,7 @@ struct CameraCardFlow: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 18)
                         } else {
-                            Text("Save Card")
+                            Text(LocalizationManager.shared.saveCard)
                                 .font(.system(size: 17, weight: .semibold))
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
@@ -2215,7 +2506,7 @@ struct CameraCardFlow: View {
                               ? Color("AppTextHint") : Color(hex: "34D399")))
                     .disabled(cardWord.trimmingCharacters(in: .whitespaces).isEmpty || isLoading)
 
-                    Button("Back") { step = .pickSource }
+                    Button(LocalizationManager.shared.backBtn) { step = .pickSource }
                         .foregroundColor(Color("AppTextHint"))
                         .font(.system(size: 15))
                 }
@@ -2314,7 +2605,7 @@ struct CategoryPickerSheet: View {
                                 .padding(.vertical, 12)
                                 .background(
                                     RoundedRectangle(cornerRadius: 16)
-                                        .fill(selectedId == cat.id ? Color("AppBg") : Color.white)
+                                        .fill(selectedId == cat.id ? Color("AppBg") : Color("AppSurface"))
                                         .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
                                 )
                             }
@@ -2325,11 +2616,11 @@ struct CategoryPickerSheet: View {
                     .padding(.vertical, 12)
                 }
             }
-            .navigationTitle("Select Category")
+            .navigationTitle(LocalizationManager.shared.selectCategory)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Cancel") { dismiss() }
+                    Button(LocalizationManager.shared.cancel) { dismiss() }
                         .foregroundColor(Color(hex: "5BAECC"))
                 }
             }

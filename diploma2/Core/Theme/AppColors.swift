@@ -51,6 +51,16 @@ struct AppColors {
     /// Success text on green bg  (#3A8A52 / dark #6DBF82)
     static let successText       = Color("AppSuccessText")
 
+    // MARK: - Adaptive UI elements
+    /// Close button circle background  (#F0F0F0 / dark #2A3A48)
+    static let closeButtonBg        = Color("AppCloseButtonBg")
+    /// Close button X icon  (#888888 / dark #8A9BA8)
+    static let closeButtonIcon      = Color("AppCloseButtonIcon")
+    /// Word chip background in sentence builder  (#EAF6FB / dark #0D2030)
+    static let wordChipBg           = Color("AppWordChipBg")
+    /// Secondary action button background  (#F5F5F5 / dark #1E2D3A)
+    static let buttonSecondaryBg    = Color("AppButtonSecondaryBg")
+
     // MARK: - Accents (same in light & dark)
     static let accentBlue        = Color(hex: "5BAECC")
     static let accentRed         = Color(hex: "F87171")

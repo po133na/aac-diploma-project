@@ -170,9 +170,9 @@ final class HomeViewModel: ObservableObject {
         }
         tokens.append(.card(card, UUID()))
         if UserDefaults.standard.bool(forKey: "auto_speak") {
-            let lang = LocalizationManager.shared.currentLanguage
-            let w = card.localizedWord(language: lang)
-            Task { await ttsService.speak(text: w, language: lang) }
+            let uiLang = LocalizationManager.shared.currentLanguage
+            let (w, ttsLang) = card.ttsInfo(uiLanguage: uiLang)
+            Task { await ttsService.speakCard(id: card.id, language: ttsLang, fallbackText: w) }
         }
         if network.isConnected {
             Task { _ = try? await cardService.useCard(id: card.id) }
@@ -202,12 +202,19 @@ final class HomeViewModel: ObservableObject {
     }
 
     func speakSentence() {
-        let lang = LocalizationManager.shared.currentLanguage
-        var words = tokens.map { $0.localizedWord(language: lang) }
+        let uiLang = LocalizationManager.shared.currentLanguage
+        var words = tokens.map { $0.localizedWord(language: uiLang) }
         let typed = typedText.trimmingCharacters(in: .whitespaces)
         if !typed.isEmpty { words.append(typed) }
         guard !words.isEmpty else { return }
-        Task { await ttsService.speakWords(words: words, language: lang) }
+        if uiLang == .kazakh {
+            // Казахский: локального голоса нет на большинстве iPhone → API TTS
+            let fullText = words.joined(separator: " ")
+            Task { await ttsService.speak(text: fullText, language: uiLang) }
+        } else {
+            // Русский / Английский: мгновенный локальный синтез без сетевого запроса
+            ttsService.speakWords(words: words, language: uiLang)
+        }
     }
 
     private func detectLanguage(_ text: String) -> AppLanguage {
@@ -278,6 +285,7 @@ final class HomeViewModel: ObservableObject {
         Task {
             do {
                 try await cardService.deleteCard(id: card.id)
+                cache.deleteCard(id: card.id)
                 cardsInCategory.removeAll { $0.id == card.id }
                 recentCards.removeAll { $0.id == card.id }
             } catch {
@@ -309,6 +317,7 @@ final class HomeViewModel: ObservableObject {
     // MARK: - Edit / Delete categories
 
     func deleteCategory(_ category: Category) {
+        guard category.nameEn != "Unassigned" else { return }
         Task {
             do {
                 try await categoryService.deleteCategory(id: category.id)

@@ -188,101 +188,139 @@ import AVFoundation
 
 @MainActor
 final class TTSService: ObservableObject {
-    static let shared = TTSService()  // ← добавить
-    private init() {}                  // ← добавить
+    static let shared = TTSService()
+    private init() {}
 
     private let client = APIClient.shared
     private var audioPlayer: AVAudioPlayer?
-
-    // Офлайн-синтезатор (fallback)
     private let synthesizer = AVSpeechSynthesizer()
+
+    private let voiceLocales: [AppLanguage: [String]] = [
+        .russian: ["ru-RU", "ru"],
+        .kazakh:  ["kk-KZ", "kk", "ru-RU"],
+        .english: ["en-US", "en-GB", "en"]
+    ]
 
     @Published var isSpeaking = false
 
-    // Основной метод — пробует API, fallback на AVFoundation
+    // Карточка по ID — пробует POST /tts/card/{id}?language=, fallback на speakLocally
+    func speakCard(id: Int, language: AppLanguage, fallbackText: String) async {
+        let trimmed = fallbackText.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        stop()
+        isSpeaking = true
+        defer { isSpeaking = false }
+
+        if id > 0 {
+            do {
+                let response: TTSResponse = try await client.request(
+                    path: "/tts/card/\(id)",
+                    method: "POST",
+                    queryItems: [.init(name: "language", value: language.rawValue)],
+                    timeout: 5
+                )
+                playAudioBase64(response.audioBase64)
+                return
+            } catch {}
+        }
+        speakLocally(text: trimmed, language: language)
+    }
+
+    // Одиночное слово/текст — пробует API (5 сек), fallback на AVSpeechSynthesizer
     func speak(text: String, language: AppLanguage) async {
-        guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        let text = text.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+        stop()
         isSpeaking = true
         defer { isSpeaking = false }
 
         do {
-            // Пробуем API
             let body = TTSRequestBody(text: text, language: language.rawValue)
             let response: TTSResponse = try await client.request(
                 path: "/tts",
                 method: "POST",
-                body: body
+                body: body,
+                timeout: 5
             )
-            await playAudioBase64(response.audioBase64)
+            playAudioBase64(response.audioBase64)
         } catch {
-            // Fallback: AVFoundation (офлайн)
             speakLocally(text: text, language: language)
         }
     }
 
-    // Исправить грамматику набора слов через Gemini и озвучить (/tts/phrase)
-    func speakWords(words: [String], language: AppLanguage) async {
+    // Предложение из карточек — сразу AVSpeechSynthesizer (мгновенно, без сети)
+    func speakWords(words: [String], language: AppLanguage) {
         guard !words.isEmpty else { return }
-        isSpeaking = true
-        defer { isSpeaking = false }
+        stop()
+        speakLocally(text: words.joined(separator: " "), language: language)
+    }
 
-        struct Body: Encodable { let words: [String]; let language: String }
-        do {
-            let response: TTSResponse = try await client.request(
-                path: "/tts/phrase",
-                method: "POST",
-                body: Body(words: words, language: language.rawValue)
-            )
-            await playAudioBase64(response.audioBase64)
-        } catch {
-            // Fallback: объединяем слова и озвучиваем локально
-            speakLocally(text: words.joined(separator: " "), language: language)
+    // Предложение с пословным языком — каждый токен в своей озвучке
+    func speakTokens(_ pairs: [(text: String, language: AppLanguage)]) {
+        let filtered = pairs.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard !filtered.isEmpty else { return }
+        stop()
+        for pair in filtered {
+            let utterance = AVSpeechUtterance(string: pair.text.trimmingCharacters(in: .whitespaces))
+            utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.85
+            utterance.volume = 1.0
+            let candidates = voiceLocales[pair.language] ?? ["en-US"]
+            utterance.voice = candidates.lazy
+                .compactMap { AVSpeechSynthesisVoice(language: $0) }
+                .first
+            synthesizer.speak(utterance)
         }
     }
 
-    // Озвучить фразу через phraseId
+    // Фраза по ID — пробует API (5 сек), fallback на локальный
     func speakPhrase(id: Int, language: AppLanguage) async {
         isSpeaking = true
         defer { isSpeaking = false }
-
         do {
             let response: TTSResponse = try await client.request(
                 path: "/phrases/\(id)/speak",
                 method: "POST",
-                queryItems: [.init(name: "language", value: language.rawValue)]
+                queryItems: [.init(name: "language", value: language.rawValue)],
+                timeout: 5
             )
-            await playAudioBase64(response.audioBase64)
-        } catch {
-            // Fallback
-        }
+            playAudioBase64(response.audioBase64)
+        } catch { }
     }
 
     func stop() {
         audioPlayer?.stop()
-        synthesizer.stopSpeaking(at: .immediate)
+        audioPlayer = nil
+        if synthesizer.isSpeaking { synthesizer.stopSpeaking(at: .immediate) }
         isSpeaking = false
     }
 
-    // MARK: Private
+    // MARK: - Private
 
-    private func playAudioBase64(_ base64: String) async {
-        guard let data = Data(base64Encoded: base64) else { return }
+    private func playAudioBase64(_ base64: String) {
+        guard let data = Data(base64Encoded: base64) else {
+            print("[TTS] Invalid base64 audio data")
+            return
+        }
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+        try? AVAudioSession.sharedInstance().setActive(true)
         do {
-            // Настройка аудио сессии
-            try AVAudioSession.sharedInstance().setCategory(.playback)
-            try AVAudioSession.sharedInstance().setActive(true)
             audioPlayer = try AVAudioPlayer(data: data)
+            audioPlayer?.volume = 1.0
+            audioPlayer?.prepareToPlay()
             audioPlayer?.play()
         } catch {
-            print("Audio play error: \(error)")
+            print("[TTS] AVAudioPlayer error: \(error)")
         }
     }
 
     private func speakLocally(text: String, language: AppLanguage) {
         let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: language.rawValue)
-        utterance.rate = 0.45
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.85
         utterance.volume = 1.0
+        let candidates = voiceLocales[language] ?? ["en-US"]
+        utterance.voice = candidates.lazy
+            .compactMap { AVSpeechSynthesisVoice(language: $0) }
+            .first
         synthesizer.speak(utterance)
     }
 }

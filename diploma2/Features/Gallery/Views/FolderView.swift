@@ -93,11 +93,11 @@ struct EmptyFolderView: View {
                 .font(.system(size: 80))
                 .foregroundColor(Color("AppTextSecondary"))
 
-            Text("Папка пуста")
+            Text(LocalizationManager.shared.folderEmpty)
                 .font(.system(size: 20, weight: .medium))
                 .foregroundColor(Color("AppTextPrimary"))
 
-            Text("Добавьте карточки в эту папку")
+            Text(LocalizationManager.shared.folderAddHint)
                 .font(.system(size: 14))
                 .foregroundColor(Color("AppTextSecondary"))
         }

@@ -90,4 +90,9 @@ final class AuthService {
         let body = ChangePasswordRequest(oldPassword: old, newPassword: new)
         return try await client.request(path: "/auth/change-password", method: "POST", body: body)
     }
+
+    // Удаление аккаунта
+    func deleteAccount() async throws {
+        try await client.requestVoid(path: "/auth/me", method: "DELETE")
+    }
 }

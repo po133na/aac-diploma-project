@@ -9,6 +9,8 @@ struct ProfileView: View {
 
     @State private var showLogOutConfirm = false
     @State private var showDeleteConfirm = false
+    @State private var showDeleteErrorAlert = false
+    @State private var deleteErrorMessage = ""
     @State private var expandedSection: SettingsSection? = nil
 
     var body: some View {
@@ -38,6 +40,7 @@ struct ProfileView: View {
                         SettingsAccordionCard(expandedSection: $expandedSection, viewModel: viewModel)
                             .padding(.horizontal, 16)
                             .padding(.bottom, 12)
+                            .tutorialAnchor(.languageTheme)
 
                         // Log Out
                         ActionRow(
@@ -70,9 +73,9 @@ struct ProfileView: View {
                     ConfirmActionModal(
                         icon: "rectangle.portrait.and.arrow.right.fill",
                         iconBg: Color(hex: "5BAECC"),
-                        title: "Log Out ?",
-                        subtitle: "You'll need to sign in again to use SpeakEasy. Your cards and data will be saved.",
-                        buttonTitle: "Log Out",
+                        title: localization.logOut + " ?",
+                        subtitle: localization.logOutSubtitle,
+                        buttonTitle: localization.logOut,
                         buttonColor: Color(hex: "5BAECC"),
                         onCancel: { showLogOutConfirm = false },
                         onConfirm: {
@@ -88,14 +91,21 @@ struct ProfileView: View {
                     ConfirmActionModal(
                         icon: "trash.fill",
                         iconBg: Color(hex: "F87171"),
-                        title: "Delete your Account ?",
-                        subtitle: "All your cards, categories and data will be permanently deleted. This cannot be undone.",
-                        buttonTitle: "Delete Account",
+                        title: localization.deleteAccountTitle,
+                        subtitle: localization.deleteAccountSubtitle,
+                        buttonTitle: localization.deleteAccount,
                         buttonColor: Color(hex: "F87171"),
                         onCancel: { showDeleteConfirm = false },
                         onConfirm: {
                             showDeleteConfirm = false
-                            // TODO: удаление аккаунта
+                            Task {
+                                await authViewModel.deleteAccount()
+                                if let err = authViewModel.deleteAccountError {
+                                    deleteErrorMessage = err
+                                    showDeleteErrorAlert = true
+                                    authViewModel.deleteAccountError = nil
+                                }
+                            }
                         }
                     )
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
@@ -104,8 +114,16 @@ struct ProfileView: View {
             .animation(.easeInOut(duration: 0.2), value: showLogOutConfirm)
             .animation(.easeInOut(duration: 0.2), value: showDeleteConfirm)
         }
+        .alert(localization.errorTitle, isPresented: $showDeleteErrorAlert) {
+            Button(localization.done, role: .cancel) {}
+        } message: {
+            Text(deleteErrorMessage)
+        }
         .onAppear {
             Task { await viewModel.loadStats() }
+            // Обогащаем перевод при каждом появлении — кэш мог обновиться после
+            // посещения Home, а .task не перезапускается при переключении вкладок
+            viewModel.enrichTopCards()
         }
     }
 }
@@ -134,11 +152,11 @@ struct ConfirmActionModal: View {
                     Button(action: onCancel) {
                         ZStack {
                             Circle()
-                                .fill(Color(hex: "F0F0F0"))
+                                .fill(Color("AppCloseButtonBg"))
                                 .frame(width: 30, height: 30)
                             Image(systemName: "xmark")
                                 .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(Color(hex: "888888"))
+                                .foregroundColor(Color("AppCloseButtonIcon"))
                         }
                     }
                 }
@@ -157,7 +175,7 @@ struct ConfirmActionModal: View {
                 VStack(spacing: 8) {
                     Text(title)
                         .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(Color(hex: "1C3F6E"))
+                        .foregroundColor(Color("AppTextPrimary"))
                         .multilineTextAlignment(.center)
 
                     Text(subtitle)
@@ -181,7 +199,7 @@ struct ConfirmActionModal: View {
             .padding(.horizontal, 16)
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color.white)
+                    .fill(Color("AppSurface"))
                     .shadow(color: .black.opacity(0.15), radius: 24, x: 0, y: 8)
             )
             .padding(.horizontal, 32)
@@ -206,32 +224,21 @@ private struct ProfileHeaderSection: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            ZStack(alignment: .bottomTrailing) {
-                if let img = avatarImage {
-                    Image(uiImage: img)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 88, height: 88)
-                        .clipShape(Circle())
-                } else {
-                    Circle()
-                        .fill(Color(hex: "87BDD8").opacity(0.55))
-                        .frame(width: 88, height: 88)
-                        .overlay(
-                            Text(initials)
-                                .font(.system(size: 30, weight: .bold))
-                                .foregroundColor(Color(hex: "2C5F7A"))
-                        )
-                }
-                NavigationLink(destination: EditProfileSheet()) {
-                    ZStack {
-                        Circle().fill(Color(hex: "5BAECC")).frame(width: 26, height: 26)
-                        Image(systemName: "pencil")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.white)
-                    }
-                }
-                .offset(x: 2, y: 2)
+            if let img = avatarImage {
+                Image(uiImage: img)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 88, height: 88)
+                    .clipShape(Circle())
+            } else {
+                Circle()
+                    .fill(Color(hex: "87BDD8").opacity(0.55))
+                    .frame(width: 88, height: 88)
+                    .overlay(
+                        Text(initials)
+                            .font(.system(size: 30, weight: .bold))
+                            .foregroundColor(Color(hex: "2C5F7A"))
+                    )
             }
 
             Text(authViewModel.currentUser?.name ?? "Labuba Labuba")
@@ -292,6 +299,7 @@ private struct SectionHeader: View {
 private struct ActivityCard: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @ObservedObject var viewModel: ProfileViewModel
+    @ObservedObject private var l = LocalizationManager.shared
 
     private var cardsUsed: Int { viewModel.stats?.thisWeekCards ?? 0 }
     private var streak: Int { viewModel.stats?.currentStreak ?? 0 }
@@ -304,7 +312,6 @@ private struct ActivityCard: View {
     }
 
     var body: some View {
-        let l = LocalizationManager.shared
         VStack(alignment: .leading, spacing: 12) {
             Text(l.thisWeek)
                 .font(.system(size: 14))
@@ -340,7 +347,7 @@ private struct ActivityCard: View {
 
             Divider().background(Color("AppBorderLight"))
 
-            NavigationLink(destination: FullStatsView(stats: viewModel.stats)) {
+            NavigationLink(destination: FullStatsView(stats: viewModel.stats, topCardDetails: viewModel.topCardDetails)) {
                 Text(l.seeFullStats)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(Color(hex: "5BAECC"))
@@ -364,7 +371,7 @@ enum SettingsSection: Identifiable, CaseIterable {
 
     func localizedTitle(_ l: LocalizationManager) -> String {
         switch self {
-        case .communication: return "Communication"
+        case .communication: return l.communication
         case .accessibility: return l.accessibility
         case .support:       return l.supportAbout
         }
@@ -479,51 +486,22 @@ private struct AccordionContent: View {
 
 private struct CommunicationSettings: View {
     @EnvironmentObject var localization: LocalizationManager
-    @State private var voiceType: String = UserDefaults.standard.string(forKey: "voice_type") ?? "female"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Voice type
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Voice type")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(Color("AppTextSecondary"))
-                    .padding(.horizontal, 16)
-
-                HStack(spacing: 10) {
-                    SegmentButton(title: "Male", isSelected: voiceType == "male") {
-                        voiceType = "male"
-                        UserDefaults.standard.set("male", forKey: "voice_type")
-                    }
-                    SegmentButton(title: "Female", isSelected: voiceType == "female") {
-                        voiceType = "female"
-                        UserDefaults.standard.set("female", forKey: "voice_type")
-                    }
+            HStack(spacing: 10) {
+                SegmentButton(title: "KK", isSelected: localization.currentLanguage == .kazakh) {
+                    localization.currentLanguage = .kazakh
                 }
-                .padding(.horizontal, 16)
+                SegmentButton(title: "EN", isSelected: localization.currentLanguage == .english) {
+                    localization.currentLanguage = .english
+                }
+                SegmentButton(title: "RU", isSelected: localization.currentLanguage == .russian) {
+                    localization.currentLanguage = .russian
+                }
             }
+            .padding(.horizontal, 16)
             .padding(.top, 14)
-
-            // Language
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Language")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(Color("AppTextSecondary"))
-                    .padding(.horizontal, 16)
-
-                HStack(spacing: 10) {
-                    SegmentButton(title: "KK", isSelected: localization.currentLanguage == .kazakh) {
-                        localization.currentLanguage = .kazakh
-                    }
-                    SegmentButton(title: "EN", isSelected: localization.currentLanguage == .english) {
-                        localization.currentLanguage = .english
-                    }
-                    SegmentButton(title: "RU", isSelected: localization.currentLanguage == .russian) {
-                        localization.currentLanguage = .russian
-                    }
-                }
-                .padding(.horizontal, 16)
-            }
             .padding(.bottom, 16)
         }
     }
@@ -533,33 +511,27 @@ private struct CommunicationSettings: View {
 
 private struct AccessibilitySettings: View {
     @ObservedObject var viewModel: ProfileViewModel
+    @ObservedObject private var l = LocalizationManager.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Theme")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(Color("AppTextSecondary"))
-                    .padding(.horizontal, 16)
-
-                HStack(spacing: 10) {
-                    SegmentButton(
-                        title: "Light",
-                        isSelected: !viewModel.darkTheme,
-                        selectedBg: Color(hex: "F5A623")
-                    ) {
-                        viewModel.darkTheme = false
-                    }
-                    SegmentButton(
-                        title: "Dark",
-                        isSelected: viewModel.darkTheme,
-                        selectedBg: Color(hex: "6DBF82")
-                    ) {
-                        viewModel.darkTheme = true
-                    }
+            HStack(spacing: 10) {
+                SegmentButton(
+                    title: l.lightMode,
+                    isSelected: !viewModel.darkTheme,
+                    selectedBg: Color(hex: "F5A623")
+                ) {
+                    viewModel.darkTheme = false
                 }
-                .padding(.horizontal, 16)
+                SegmentButton(
+                    title: l.darkMode,
+                    isSelected: viewModel.darkTheme,
+                    selectedBg: Color(hex: "6DBF82")
+                ) {
+                    viewModel.darkTheme = true
+                }
             }
+            .padding(.horizontal, 16)
             .padding(.top, 14)
             .padding(.bottom, 16)
         }
@@ -582,7 +554,7 @@ private struct SupportSettings: View {
                         .foregroundColor(Color("AppTextPrimary"))
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Email us")
+                    Text(LocalizationManager.shared.emailUs)
                         .font(.system(size: 15, weight: .medium))
                         .foregroundColor(Color("AppTextPrimary"))
                     Text("@unim_support@gmail.com")
@@ -606,7 +578,7 @@ private struct SupportSettings: View {
                         .font(.system(size: 14))
                         .foregroundColor(Color("AppTextPrimary"))
                 }
-                Text("Version")
+                Text(LocalizationManager.shared.versionLabel)
                     .font(.system(size: 15, weight: .medium))
                     .foregroundColor(Color("AppTextPrimary"))
                 Spacer()
@@ -626,7 +598,7 @@ private struct SupportSettings: View {
 struct SegmentButton: View {
     let title: String
     let isSelected: Bool
-    var selectedBg: Color = Color(hex: "1C3F6E")
+    var selectedBg: Color = Color("AppTextPrimary")
     let onTap: () -> Void
 
     var body: some View {
@@ -711,15 +683,17 @@ struct EditProfileSheet: View {
             VStack(spacing: 0) {
                 // ── Навбар ──
                 HStack {
-                    Button("Cancel") { dismiss() }
+                    Button(LocalizationManager.shared.cancel) { dismiss() }
                         .font(.system(size: 15))
                         .foregroundColor(Color("AppTextSecondary"))
 
                     Spacer()
 
-                    Text("Edit profile")
+                    Text(LocalizationManager.shared.editProfileBtn)
                         .font(.system(size: 17, weight: .bold))
                         .foregroundColor(Color("AppTextPrimary"))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
 
                     Spacer()
 
@@ -735,7 +709,7 @@ struct EditProfileSheet: View {
                         if isSaving {
                             ProgressView().scaleEffect(0.8)
                         } else {
-                            Text("Save")
+                            Text(LocalizationManager.shared.save)
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(Color(hex: "5BAECC"))
                         }
@@ -749,7 +723,7 @@ struct EditProfileSheet: View {
                     VStack(spacing: 28) {
 
                         // ── Аватар ──
-                        ZStack(alignment: .bottomTrailing) {
+                        Group {
                             if let img = avatarImage {
                                 Image(uiImage: img)
                                     .resizable()
@@ -766,13 +740,6 @@ struct EditProfileSheet: View {
                                             .foregroundColor(Color(hex: "2C5F7A"))
                                     )
                             }
-                            ZStack {
-                                Circle().fill(Color(hex: "5BAECC")).frame(width: 26, height: 26)
-                                Image(systemName: "pencil")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundColor(.white)
-                            }
-                            .offset(x: 2, y: 2)
                         }
                         .padding(.top, 20)
 
@@ -782,7 +749,7 @@ struct EditProfileSheet: View {
                                 HStack(spacing: 8) {
                                     Image(systemName: "photo")
                                         .font(.system(size: 14, weight: .semibold))
-                                    Text("Change photo")
+                                    Text(LocalizationManager.shared.changePhoto)
                                         .font(.system(size: 14, weight: .semibold))
                                 }
                                 .foregroundColor(.white)
@@ -802,7 +769,7 @@ struct EditProfileSheet: View {
                                 HStack(spacing: 8) {
                                     Image(systemName: "trash.fill")
                                         .font(.system(size: 14, weight: .semibold))
-                                    Text("Remove Photo")
+                                    Text(LocalizationManager.shared.removePhotoBtn)
                                         .font(.system(size: 14, weight: .semibold))
                                 }
                                 .foregroundColor(.white)
@@ -820,15 +787,15 @@ struct EditProfileSheet: View {
                         // ── Поля имени ──
                         VStack(alignment: .leading, spacing: 16) {
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("Firstname")
+                                Text(LocalizationManager.shared.firstName)
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundColor(Color("AppTextPrimary"))
 
                                 HStack(spacing: 10) {
-                                    Image(systemName: "pencil")
+                                    Image(systemName: "person")
                                         .font(.system(size: 13))
                                         .foregroundColor(Color("AppTextHint"))
-                                    TextField("First name", text: $firstName)
+                                    TextField(LocalizationManager.shared.enterNamePlaceholder, text: $firstName)
                                         .font(.system(size: 15))
                                         .foregroundColor(Color("AppTextPrimary"))
                                 }
@@ -836,20 +803,20 @@ struct EditProfileSheet: View {
                                 .padding(.vertical, 14)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(hex: "EAF6FB"))
+                                        .fill(Color("AppWordChipBg"))
                                 )
                             }
 
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("Lastname")
+                                Text(LocalizationManager.shared.lastName)
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundColor(Color("AppTextPrimary"))
 
                                 HStack(spacing: 10) {
-                                    Image(systemName: "pencil")
+                                    Image(systemName: "person")
                                         .font(.system(size: 13))
                                         .foregroundColor(Color("AppTextHint"))
-                                    TextField("Last name", text: $lastName)
+                                    TextField(LocalizationManager.shared.enterSurnamePlaceholder, text: $lastName)
                                         .font(.system(size: 15))
                                         .foregroundColor(Color("AppTextPrimary"))
                                 }
@@ -857,7 +824,7 @@ struct EditProfileSheet: View {
                                 .padding(.vertical, 14)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(hex: "EAF6FB"))
+                                        .fill(Color("AppWordChipBg"))
                                 )
                             }
                         }
@@ -878,10 +845,10 @@ struct EditProfileSheet: View {
                             Spacer()
                             Button { showRemovePhotoConfirm = false } label: {
                                 ZStack {
-                                    Circle().fill(Color(hex: "F0F0F0")).frame(width: 30, height: 30)
+                                    Circle().fill(Color("AppCloseButtonBg")).frame(width: 30, height: 30)
                                     Image(systemName: "xmark")
                                         .font(.system(size: 11, weight: .bold))
-                                        .foregroundColor(Color(hex: "888888"))
+                                        .foregroundColor(Color("AppCloseButtonIcon"))
                                 }
                             }
                         }
@@ -895,9 +862,9 @@ struct EditProfileSheet: View {
                                 .foregroundColor(Color(hex: "F87171"))
                         }
 
-                        Text("Remove your photo?")
+                        Text(LocalizationManager.shared.removePhotoConfirm)
                             .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(Color(hex: "1C3F6E"))
+                            .foregroundColor(Color("AppTextPrimary"))
                             .multilineTextAlignment(.center)
 
                         Button {
@@ -905,7 +872,7 @@ struct EditProfileSheet: View {
                             avatarImage = nil
                             UserDefaults.standard.removeObject(forKey: avatarKey)
                         } label: {
-                            Text("Remove")
+                            Text(LocalizationManager.shared.deleteAction)
                                 .font(.system(size: 16, weight: .bold))
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
@@ -953,9 +920,10 @@ struct EditProfileSheet: View {
 
 struct FullStatsView: View {
     let stats: UserStats?
+    var topCardDetails: [Int: Card] = [:]
+    @ObservedObject private var l = LocalizationManager.shared
 
     var body: some View {
-        let l = LocalizationManager.shared
         ZStack {
             Color("AppBgAlt").ignoresSafeArea()
             ScrollView(showsIndicators: false) {
@@ -971,13 +939,18 @@ struct FullStatsView: View {
                             (l.totalPhraseUses, "\(stats?.totalPhraseUses ?? 0)")
                         ]
                     )
-                    if let topCards = stats?.topCards, !topCards.isEmpty {
-                        MostUsedCardsCard(topCards: Array(topCards.prefix(5)))
+                    let usedCards = stats?.topCards.filter { $0.usageCount > 0 } ?? []
+                    if !usedCards.isEmpty {
+                        MostUsedCardsCard(
+                            topCards: Array(usedCards.prefix(5)),
+                            cardDetails: topCardDetails
+                        )
                     }
-                    if let topPhrases = stats?.topPhrases, !topPhrases.isEmpty {
+                    let usedPhrases = stats?.topPhrases.filter { $0.usageCount > 0 } ?? []
+                    if !usedPhrases.isEmpty {
                         StatsCard(
                             title: l.mostUsedPhrases,
-                            items: topPhrases.prefix(5).map { ("\($0.name)", "\($0.usageCount) \(l.uses)") }
+                            items: usedPhrases.prefix(5).map { ("\($0.name)", "\($0.usageCount) \(l.uses)") }
                         )
                     }
                     if let weeklyData = stats?.weeklyData, !weeklyData.isEmpty {
@@ -1021,9 +994,10 @@ struct StatsCard: View {
 
 struct MostUsedCardsCard: View {
     let topCards: [TopCard]
+    var cardDetails: [Int: Card] = [:]
+    @ObservedObject private var l = LocalizationManager.shared
 
     var body: some View {
-        let l = LocalizationManager.shared
         VStack(alignment: .leading, spacing: 12) {
             Text(l.mostUsedCards)
                 .font(.system(size: 16, weight: .bold))
@@ -1036,7 +1010,10 @@ struct MostUsedCardsCard: View {
                             if index == 0 {
                                 Image(systemName: "star.fill").font(.system(size: 12)).foregroundColor(Color(hex: "F5A623"))
                             }
-                            Text(card.word).font(.system(size: 14)).foregroundColor(Color("AppTextPrimary"))
+                            Text(
+                                cardDetails[card.id]?.localizedWord(language: l.currentLanguage)
+                                ?? card.localizedWord(language: l.currentLanguage)
+                            ).font(.system(size: 14)).foregroundColor(Color("AppTextPrimary"))
                             Spacer()
                             Text("\(card.usageCount) \(l.uses)").font(.system(size: 14, weight: .medium)).foregroundColor(Color(hex: "5BAECC"))
                             Image(systemName: "chevron.right").font(.system(size: 11)).foregroundColor(Color("AppTextHint"))
@@ -1057,6 +1034,8 @@ struct TopCardDetailView: View {
     let card: TopCard
     @State private var uiImage: UIImage? = nil
     @State private var isLoading = true
+    @State private var cardLanguage: AppLanguage = .russian
+    @State private var fetchedCard: Card? = nil
 
     var body: some View {
         ZStack {
@@ -1076,7 +1055,8 @@ struct TopCardDetailView: View {
                                 .frame(width: 200, height: 200)
                                 .overlay(Image(systemName: "photo").font(.system(size: 40)).foregroundColor(Color("AppTextHint")))
                         }
-                        Text(card.word).font(.system(size: 28, weight: .bold)).foregroundColor(Color("AppTextPrimary"))
+                        Text(fetchedCard?.localizedWord(language: LocalizationManager.shared.currentLanguage) ?? card.localizedWord(language: LocalizationManager.shared.currentLanguage))
+                            .font(.system(size: 28, weight: .bold)).foregroundColor(Color("AppTextPrimary"))
                         HStack(spacing: 6) {
                             Image(systemName: "hand.tap.fill").foregroundColor(Color(hex: "5BAECC"))
                             Text("\(LocalizationManager.shared.uses): \(card.usageCount)").font(.system(size: 16)).foregroundColor(Color("AppTextSecondary"))
@@ -1084,7 +1064,14 @@ struct TopCardDetailView: View {
                         .padding(.horizontal, 20).padding(.vertical, 10)
                         .background(Capsule().fill(Color("AppSurface")).shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2))
                         Button {
-                            Task { await TTSService.shared.speak(text: card.word, language: .russian) }
+                            let uiLang = LocalizationManager.shared.currentLanguage
+                            if let full = fetchedCard {
+                                let (text, lang) = full.ttsInfo(uiLanguage: uiLang)
+                                Task { await TTSService.shared.speakCard(id: full.id, language: lang, fallbackText: text) }
+                            } else {
+                                let (text, lang) = card.ttsInfo(uiLanguage: uiLang)
+                                Task { await TTSService.shared.speak(text: text, language: lang) }
+                            }
                         } label: {
                             HStack(spacing: 8) {
                                 Image(systemName: "speaker.wave.2.fill")
@@ -1105,6 +1092,8 @@ struct TopCardDetailView: View {
                 if !fetched.imageBase64.isEmpty, let data = Data(base64Encoded: fetched.imageBase64) {
                     uiImage = UIImage(data: data)
                 }
+                cardLanguage = AppLanguage(rawValue: fetched.language) ?? .russian
+                fetchedCard = fetched
             }
             isLoading = false
         }
@@ -1114,9 +1103,9 @@ struct TopCardDetailView: View {
 struct WeeklyChartView: View {
     let data: [Double]
     private var maxValue: Double { data.max() ?? 1.0 }
+    @ObservedObject private var l = LocalizationManager.shared
 
     var body: some View {
-        let l = LocalizationManager.shared
         VStack(alignment: .leading, spacing: 12) {
             Text(l.weeklyActivity).font(.system(size: 16, weight: .bold)).foregroundColor(Color("AppTextPrimary"))
             HStack(alignment: .bottom, spacing: 8) {
@@ -1135,8 +1124,9 @@ struct WeeklyChartView: View {
     }
 
     private func dayLabel(for index: Int) -> String {
-        let days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        return index < days.count ? days[index] : "Day \(index + 1)"
+        let l = LocalizationManager.shared
+        let days = [l.dayMon, l.dayTue, l.dayWed, l.dayThu, l.dayFri, l.daySat, l.daySun]
+        return index < days.count ? days[index] : "\(index + 1)"
     }
 }
 
