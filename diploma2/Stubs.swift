@@ -172,18 +172,14 @@ final class LocalizationManager: ObservableObject {
     var yourCards:                  String { s("your_cards") }
     var selectCardsHint:            String { s("select_cards_hint") }
     var skipArrow:                  String { s("skip_arrow") }
-    var almostDone:                 String { s("almost_done") }
-    var categoryLooksPerfect:       String { s("category_looks_perfect") }
     var categoryCreated:            String { s("category_created") }
     var categoryReady:              String { s("category_ready") }
     var step1CatLabel:              String { s("step1_cat_label") }
     var step2CatLabel:              String { s("step2_cat_label") }
     var step3CatLabel:              String { s("step3_cat_label") }
-    var step4CatLabel:              String { s("step4_cat_label") }
     var categoryCoverTitle:         String { s("category_cover_title") }
     var categoryCoverSubtitle:      String { s("category_cover_subtitle") }
     var creating:                   String { s("creating") }
-    var createCategoryBtn:          String { s("create_category_btn") }
     var createAnotherCategory:      String { s("create_another_category") }
     var viewCategory:               String { s("view_category") }
     var newCategory:                String { s("new_category") }

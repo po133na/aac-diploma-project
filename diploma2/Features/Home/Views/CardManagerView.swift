@@ -1329,7 +1329,6 @@ enum CreateCategoryStep {
     case generatingCover
     case coverPreview
     case addCards
-    case savingPreview
     case success
 }
 
@@ -1349,15 +1348,16 @@ struct CreateCategoryFlow: View {
     @State private var createdCategory: Category? = nil
     @State private var generatedCoverBase64: String? = nil
     @State private var generateTriggerCount = 0
+    @State private var isSavingCategory = false
+    @State private var saveError: String? = nil
     @ObservedObject private var l = LocalizationManager.shared
 
     private var progress: Double {
         switch step {
-        case .nameCategory:    return 0.25
-        case .generatingCover: return 0.50
-        case .coverPreview:    return 0.65
-        case .addCards:        return 0.80
-        case .savingPreview:   return 1.0
+        case .nameCategory:    return 1.0 / 3.0
+        case .generatingCover: return 2.0 / 3.0
+        case .coverPreview:    return 2.0 / 3.0
+        case .addCards:        return 1.0
         case .success:         return 1.0
         }
     }
@@ -1368,7 +1368,6 @@ struct CreateCategoryFlow: View {
         case .generatingCover: return l.step2CatLabel
         case .coverPreview:    return l.step2CatLabel
         case .addCards:        return l.step3CatLabel
-        case .savingPreview:   return l.step4CatLabel
         case .success:         return ""
         }
     }
@@ -1408,10 +1407,13 @@ struct CreateCategoryFlow: View {
                         categoryName: categoryName,
                         onSave: { step = .addCards },
                         onRegenerate: {
+                            // Возврат на шаг 1 — сбрасываем всё и начинаем заново
+                            deleteTempCategoryIfNeeded()
                             galleryImageBase64 = nil
                             generatedCoverBase64 = nil
-                            generateTriggerCount += 1
-                            step = .generatingCover
+                            generateTriggerCount = 0
+                            categoryName = ""
+                            step = .nameCategory
                         },
                         onChooseGallery: { base64 in
                             galleryImageBase64 = base64
@@ -1431,22 +1433,11 @@ struct CreateCategoryFlow: View {
                     CategoryAddCardsStep(
                         cards: unassignedCards,
                         selectedCardIds: $selectedCardIds,
-                        coverCardId: $coverCardId
+                        coverCardId: $coverCardId,
+                        isLoading: isSavingCategory,
+                        errorMessage: saveError
                     ) {
-                        step = .savingPreview
-                    }
-                case .savingPreview:
-                    CategorySaveStep(
-                        categoryName: categoryName,
-                        selectedCardIds: selectedCardIds,
-                        coverCard: unassignedCards.first(where: { $0.id == coverCardId }),
-                        galleryImageBase64: galleryImageBase64,
-                        existingCategory: tempCreatedCategory
-                    ) { count, category, coverBase64 in
-                        createdCardCount = count
-                        createdCategory = category
-                        generatedCoverBase64 = coverBase64
-                        step = .success
+                        Task { await saveCategoryAndFinish() }
                     }
                 case .success:
                     CategorySuccessScreen(
@@ -1465,6 +1456,8 @@ struct CreateCategoryFlow: View {
                         createdCategory = nil
                         generatedCoverBase64 = nil
                         generateTriggerCount = 0
+                        isSavingCategory = false
+                        saveError = nil
                     } onView: {
                         if let cat = createdCategory {
                             onViewCategory?(cat) ?? onDismissToHome?() ?? dismiss()
@@ -1505,8 +1498,6 @@ struct CreateCategoryFlow: View {
             step = .generatingCover
         case .addCards:
             step = .coverPreview
-        case .savingPreview:
-            step = .addCards
         case .success:
             break
         }
@@ -1536,6 +1527,52 @@ struct CreateCategoryFlow: View {
             // On failure still advance so user can choose from gallery
         }
         step = .coverPreview
+    }
+
+    private func saveCategoryAndFinish() async {
+        guard !categoryName.isEmpty else { return }
+        isSavingCategory = true
+        saveError = nil
+        do {
+            var category: Category
+            if let existing = tempCreatedCategory {
+                category = existing
+            } else {
+                category = try await CategoryService.shared.createCategory(
+                    name: categoryName, nameKk: nil, nameEn: nil, icon: nil
+                )
+                if let galleryBase64 = galleryImageBase64, !galleryBase64.isEmpty {
+                    if let updated = try? await CategoryService.shared.uploadCover(
+                        categoryId: category.id, imageBase64: galleryBase64
+                    ) {
+                        category = updated
+                    }
+                } else if let coverBase64 = unassignedCards.first(where: { $0.id == coverCardId })?.imageBase64,
+                          !coverBase64.isEmpty {
+                    if let updated = try? await CategoryService.shared.uploadCover(
+                        categoryId: category.id, imageBase64: coverBase64
+                    ) {
+                        category = updated
+                    }
+                }
+            }
+            if !selectedCardIds.isEmpty {
+                try await CategoryService.shared.assignCards(
+                    categoryId: category.id,
+                    cardIds: Array(selectedCardIds)
+                )
+            }
+            await homeViewModel.refreshCategories()
+            createdCardCount = selectedCardIds.count
+            createdCategory = category
+            if generatedCoverBase64 == nil {
+                generatedCoverBase64 = category.coverImageBase64
+            }
+            step = .success
+        } catch {
+            saveError = error.localizedDescription
+        }
+        isSavingCategory = false
     }
 }
 
@@ -1752,6 +1789,8 @@ private struct CategoryAddCardsStep: View {
     let cards: [Card]
     @Binding var selectedCardIds: Set<Int>
     @Binding var coverCardId: Int?
+    var isLoading: Bool = false
+    var errorMessage: String? = nil
     let onNext: () -> Void
     @ObservedObject private var l = LocalizationManager.shared
 
@@ -1807,17 +1846,38 @@ private struct CategoryAddCardsStep: View {
                 .padding(.bottom, 20)
             }
 
-            Button(action: onNext) {
-                Text(selectedCardIds.isEmpty ? l.skipArrow : "\(l.addCards) (\(selectedCardIds.count)) →")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18)
-                            .fill(Color(hex: "A78BFA"))
-                    )
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.system(size: 14))
+                    .foregroundColor(Color.red)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 8)
             }
+
+            Button(action: onNext) {
+                HStack(spacing: 8) {
+                    if isLoading {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.8)
+                    }
+                    Text(
+                        isLoading
+                            ? l.creating
+                            : (selectedCardIds.isEmpty ? l.skipArrow : "\(l.addCards) (\(selectedCardIds.count)) →")
+                    )
+                    .font(.system(size: 17, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
+                .background(
+                    RoundedRectangle(cornerRadius: 18)
+                        .fill(Color(hex: "A78BFA"))
+                )
+            }
+            .disabled(isLoading)
+            .opacity(isLoading ? 0.7 : 1)
             .padding(.horizontal, 20)
             .padding(.bottom, 32)
         }
@@ -1900,179 +1960,6 @@ private struct RealSelectableCardView: View {
                 return UIImage(data: data)
             }.value
             uiImage = img
-        }
-    }
-}
-
-// MARK: - Category Save Step
-
-private struct CategorySaveStep: View {
-    let categoryName: String
-    let selectedCardIds: Set<Int>
-    let coverCard: Card?
-    var galleryImageBase64: String? = nil
-    var existingCategory: Category? = nil
-    @EnvironmentObject var homeViewModel: HomeViewModel
-    @State private var isLoading = false
-    @State private var errorMessage: String?
-    @State private var generatedCoverImage: UIImage? = nil
-    let onSave: (Int, Category, String?) -> Void
-    @ObservedObject private var l = LocalizationManager.shared
-
-    private var galleryThumbnail: UIImage? {
-        guard let b64 = galleryImageBase64,
-              let data = Data(base64Encoded: b64) else { return nil }
-        return UIImage(data: data)
-    }
-
-    private var existingCoverImage: UIImage? {
-        guard let b64 = existingCategory?.coverImageBase64,
-              let data = Data(base64Encoded: b64) else { return nil }
-        return UIImage(data: data)
-    }
-
-    var body: some View {
-        return VStack(spacing: 0) {
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 20) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(hex: "6DBF82"))
-                            .frame(width: 60, height: 60)
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 26, weight: .bold))
-                            .foregroundColor(.white)
-                    }
-                    .padding(.top, 32)
-
-                    VStack(spacing: 8) {
-                        Text(l.almostDone)
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(Color("AppTextPrimary"))
-                        Text(l.categoryLooksPerfect)
-                            .font(.system(size: 14))
-                            .foregroundColor(Color("AppTextSecondary"))
-                    }
-
-                    // Превью категории с обложкой
-                    ZStack(alignment: .bottom) {
-                        if let img = generatedCoverImage ?? existingCoverImage {
-                            Image(uiImage: img)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(height: 120)
-                                .clipped()
-                                .cornerRadius(18)
-                                .padding(.horizontal, 40)
-                        } else if let img = galleryThumbnail {
-                            Image(uiImage: img)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(height: 120)
-                                .clipped()
-                                .cornerRadius(18)
-                                .padding(.horizontal, 40)
-                        } else if let img = coverCard?.image {
-                            Image(uiImage: img)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(height: 120)
-                                .clipped()
-                                .cornerRadius(18)
-                                .padding(.horizontal, 40)
-                        } else {
-                            RoundedRectangle(cornerRadius: 18)
-                                .fill(Color("AppTintPurple"))
-                                .frame(height: 120)
-                                .padding(.horizontal, 40)
-                        }
-                        Text(categoryName.isEmpty ? l.newCategory : categoryName)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor((generatedCoverImage != nil || existingCoverImage != nil || galleryThumbnail != nil || coverCard?.image != nil) ? Color.white : Color("AppTextPrimary"))
-                            .padding(.horizontal, 12)
-                            .padding(.bottom, 10)
-                            .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 1)
-                    }
-
-                    if !selectedCardIds.isEmpty {
-                        Text("\(selectedCardIds.count) card\(selectedCardIds.count == 1 ? "" : "s") will be added")
-                            .font(.system(size: 13))
-                            .foregroundColor(Color("AppTextSecondary"))
-                    }
-
-                    if let errorMessage = errorMessage {
-                        Text(errorMessage)
-                            .font(.system(size: 14))
-                            .foregroundColor(Color.red)
-                            .padding(.top, 8)
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 20)
-            }
-
-            Button(action: createCategory) {
-                HStack(spacing: 8) {
-                    if isLoading {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(0.8)
-                    }
-                    Text(isLoading ? l.creating : l.createCategoryBtn)
-                        .font(.system(size: 17, weight: .semibold))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
-                .background(RoundedRectangle(cornerRadius: 18).fill(Color(hex: "6DBF82")))
-            }
-            .disabled(isLoading)
-            .opacity(isLoading ? 0.7 : 1)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 32)
-        }
-    }
-
-    private func createCategory() {
-        guard !categoryName.isEmpty else { return }
-        isLoading = true
-        errorMessage = nil
-        Task {
-            do {
-                var category: Category
-                if let existing = existingCategory {
-                    // Категория уже была создана на шаге AI preview
-                    category = existing
-                } else {
-                    category = try await CategoryService.shared.createCategory(
-                        name: categoryName, nameKk: nil, nameEn: nil, icon: nil
-                    )
-                    // Загружаем обложку из галереи
-                    if let galleryBase64 = galleryImageBase64, !galleryBase64.isEmpty {
-                        if let updated = try? await CategoryService.shared.uploadCover(categoryId: category.id, imageBase64: galleryBase64) {
-                            category = updated
-                        }
-                    // Загружаем обложку карточки-обложки
-                    } else if let coverBase64 = coverCard?.imageBase64, !coverBase64.isEmpty {
-                        if let updated = try? await CategoryService.shared.uploadCover(categoryId: category.id, imageBase64: coverBase64) {
-                            category = updated
-                        }
-                    }
-                }
-                // Bulk переназначение выбранных карточек в новую категорию
-                if !selectedCardIds.isEmpty {
-                    try await CategoryService.shared.assignCards(
-                        categoryId: category.id,
-                        cardIds: Array(selectedCardIds)
-                    )
-                }
-                await homeViewModel.refreshCategories()
-                isLoading = false
-                onSave(selectedCardIds.count, category, category.coverImageBase64)
-            } catch {
-                errorMessage = error.localizedDescription
-                isLoading = false
-            }
         }
     }
 }

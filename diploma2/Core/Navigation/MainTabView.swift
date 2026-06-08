@@ -58,22 +58,22 @@ struct CustomTabBar: View {
     @Binding var selectedTab: TabRoute
     let onPlusTap: () -> Void
     var onHomeTap: (() -> Void)? = nil
+    @ObservedObject private var l = LocalizationManager.shared
+
+    private let plusButtonSize: CGFloat = 58
 
     var body: some View {
         HStack(spacing: 0) {
-            // Home tab
             TabBarItem(
                 icon: "house.fill",
-                label: LocalizationManager.shared.homeTab,
+                label: l.homeTab,
                 isSelected: selectedTab == .home
             ) {
                 onHomeTap?()
                 selectedTab = .home
             }
+            .frame(maxWidth: .infinity)
 
-            Spacer()
-
-            // Plus button
             Button(action: onPlusTap) {
                 ZStack {
                     Circle()
@@ -84,31 +84,30 @@ struct CustomTabBar: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 58, height: 58)
+                        .frame(width: plusButtonSize, height: plusButtonSize)
                         .shadow(color: Color(hex: "5BAECC").opacity(0.4), radius: 10, x: 0, y: 4)
 
                     Image(systemName: "plus")
                         .font(.system(size: 24, weight: .semibold))
                         .foregroundColor(.white)
                 }
+                .frame(width: plusButtonSize, height: plusButtonSize)
             }
             .offset(y: -16)
             .tutorialAnchor(.plusButton, yOffset: -16)
 
-            Spacer()
-
-            // Settings tab
             TabBarItem(
                 icon: "gearshape.fill",
-                label: LocalizationManager.shared.settingsTab,
+                label: l.settingsTab,
                 isSelected: selectedTab == .settings
             ) {
                 TutorialManager.shared.advance(from: .statsTab)
                 selectedTab = .settings
             }
+            .frame(maxWidth: .infinity)
             .tutorialAnchor(.statsTab)
         }
-        .padding(.horizontal, 40)
+//        .padding(.horizontal, 40)
         .padding(.top, 12)
         .padding(.bottom, 28)
         .background(
@@ -134,10 +133,19 @@ struct TabBarItem: View {
                 Image(systemName: icon)
                     .font(.system(size: 22))
                     .foregroundColor(isSelected ? Color(hex: "5BAECC") : Color("AppTextHint"))
+                    .frame(height: 22)
+
                 Text(label)
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(isSelected ? Color(hex: "5BAECC") : Color("AppTextHint"))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.65)
+                    .allowsTightening(true)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 12)
             }
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(PlainButtonStyle())
     }
