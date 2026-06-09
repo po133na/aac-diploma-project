@@ -7,6 +7,7 @@ from io import BytesIO
 from pathlib import Path
 import asyncio
 import base64
+import re
 import secrets
 from PIL import Image
 
@@ -61,12 +62,52 @@ app.add_middleware(
 # Hugging Face клиент
 hf_client = InferenceClient(token=settings.HUGGINGFACE_API_TOKEN)
 
+_SAFETY_NEGATIVE_PROMPT = (
+    "nude, naked, nsfw, explicit, sexual, pornographic, erotic, "
+    "violent, gore, blood, disturbing, inappropriate, adult content"
+)
+
+_BLOCKED_PATTERNS = re.compile(
+    r'\b(?:'
+    # English
+    r'nude|naked|nsfw|porn(?:ography)?|explicit|erotic|xxx|hentai|sex(?:ual)?|'
+    r'gore|snuff|rape|genitals?|penis|vagina|nipple|boob|tit|dick|cock|cunt|'
+    r'ass(?:hole)?|bitch|fuck(?:ing)?|shit|whore|slut|bastard|blowjob|'
+    r'violent|violence|murder|suicide|'
+    # Russian
+    r'голый|голая|голые|секс|порно|порнография|эротика|'
+    r'насилие|убийство|расчленение|интимный|половой|'
+    r'член|влагалище|сиськи|хуй|пизда|ебать|ёбаный|еб[её]т|блядь|шлюха|сука|мудак|залупа|'
+    r'ублюдок|педик|ёб|наркот|пиздец|хуйня|бляд|пиздёж|ёбаный|ёбнутый|'
+    r'дрочить|дрочка|трахать|трахнуть|трах|сперма|оргазм|'
+    # Kazakh
+    r'жалаңаш|жыныстық|жезөкше|боқ|нас|ұятсыз|сиқ|қотыр|арсыз|нәпсі|'
+    r'итсің|ақымақ|жендет|өлтір|'
+    r'қотақ|жезтырнақ|жексұрын|нашақор|маскүнем|боқмұрын|сиқыр|пысқ|'
+    r'ам\b'
+    r')\b',
+    re.IGNORECASE | re.UNICODE,
+)
+
+def _check_prompt_safety(text: str) -> None:
+    if _BLOCKED_PATTERNS.search(text):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "en": "Prompt contains inappropriate content. Please use appropriate language.",
+                "ru": "Запрос содержит недопустимый контент. Пожалуйста, используйте подходящие слова.",
+                "kk": "Сұраныста қолайсыз мазмұн бар. Өтінемін, тиісті сөздерді қолданыңыз.",
+            }
+        )
+
+
 async def _generate_image(prompt: str) -> str:
     """Запускает синхронный HF-клиент в thread pool, возвращает base64 PNG."""
     image = await asyncio.to_thread(
         hf_client.text_to_image,
         prompt,
         model="black-forest-labs/FLUX.1-schnell",
+        negative_prompt=_SAFETY_NEGATIVE_PROMPT,
     )
     buffer = BytesIO()
     image.save(buffer, format="PNG")
@@ -654,6 +695,8 @@ async def generate_category_cover(
         raise HTTPException(status_code=404, detail="Category not found")
 
     subject = body.prompt if body.prompt else (category.name_en or category.name_kk or category.name)
+    if body.prompt:
+        _check_prompt_safety(body.prompt)
 
     try:
         translated_subject = subject if category.name_en and not body.prompt else await translate_to_english(subject, "auto")
@@ -705,6 +748,7 @@ async def generate_card(
 ):
     """Генерирует изображение и сразу сохраняет в категорию Generated.
     iOS удаляет карточку если юзер отклонил, или переносит в нужную категорию если принял."""
+    _check_prompt_safety(card_data.word)
     try:
         translated = await translate_to_english(card_data.word, card_data.language)
         image_base64 = await _generate_image(f"{translated}, {IMAGE_STYLE_PROMPT}")
@@ -757,6 +801,7 @@ async def create_card(
     current_user: User = Depends(get_current_user)
 ):
     """Создать карточку: слово → перевод → генерация изображения → сохранение"""
+    _check_prompt_safety(card_data.word)
     try:
         # 1. Перевод на английский
         translated = await translate_to_english(card_data.word, card_data.language)
