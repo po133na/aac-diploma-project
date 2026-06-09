@@ -67,38 +67,83 @@ _SAFETY_NEGATIVE_PROMPT = (
     "violent, gore, blood, disturbing, inappropriate, adult content"
 )
 
-_BLOCKED_PATTERNS = re.compile(
-    r'\b(?:'
-    # English
-    r'nude|naked|nsfw|porn(?:ography)?|explicit|erotic|xxx|hentai|sex(?:ual)?|'
-    r'gore|snuff|rape|genitals?|penis|vagina|nipple|boob|tit|dick|cock|cunt|'
-    r'ass(?:hole)?|bitch|fuck(?:ing)?|shit|whore|slut|bastard|blowjob|'
-    r'violent|violence|murder|suicide|'
-    # Russian
-    r'голый|голая|голые|секс|порно|порнография|эротика|'
-    r'насилие|убийство|расчленение|интимный|половой|'
-    r'член|влагалище|сиськи|хуй|пизда|ебать|ёбаный|еб[её]т|блядь|шлюха|сука|мудак|залупа|'
-    r'ублюдок|педик|ёб|наркот|пиздец|хуйня|бляд|пиздёж|ёбаный|ёбнутый|'
-    r'дрочить|дрочка|трахать|трахнуть|трах|сперма|оргазм|'
-    # Kazakh
-    r'жалаңаш|жыныстық|жезөкше|боқ|нас|ұятсыз|сиқ|қотыр|арсыз|нәпсі|'
-    r'итсің|ақымақ|жендет|өлтір|'
-    r'қотақ|жезтырнақ|жексұрын|нашақор|маскүнем|боқмұрын|сиқыр|пысқ|'
-    r'ам\b'
-    r')\b',
+# Корневой regex покрывает русские словоформы (хуёвый, пиздец, заёбал и т.д.)
+_BLOCKED_ROOTS = re.compile(
+    r'(?:хуй|хуе|хуё|пизд|ёба|ёбё|заёб|наёб|проёб|выёб|подъёб|залуп|'
+    r'мудак|мудил|говн|жоп|срак|шлюх|дроч|трах|гандон|педик|педер|пидор|'
+    r'долбоёб|уёбок|засран|қотақ|сіктір)',
     re.IGNORECASE | re.UNICODE,
 )
 
+# Полный словарь запрещённых слов
+_BLOCKED_WORDS: frozenset = frozenset({
+    # === ENGLISH ===
+    "nude", "naked", "nsfw", "porn", "pornography", "erotic", "xxx", "hentai",
+    "sex", "sexual", "anal", "anus", "penis", "vagina", "vulva", "scrotum",
+    "genitals", "nipple", "nipples", "boob", "boobs", "tit", "tits", "titties",
+    "dick", "cock", "cunt", "ass", "asshole", "bitch", "fuck", "fucking",
+    "fucker", "motherfucker", "shit", "shithead", "whore", "slut", "bastard",
+    "blowjob", "handjob", "rimjob", "fisting", "bondage", "dildo", "vibrator",
+    "orgasm", "cum", "cumshot", "masturbate", "masturbation", "rape", "rapist",
+    "gore", "snuff", "semen", "sperm", "clitoris", "labia", "rectum",
+    "wank", "wanker", "twat", "prick", "muff", "queef", "skank", "ho",
+    "faggot", "fag", "dyke", "kike", "nigger", "nigga", "spic", "chink",
+    "gook", "wetback", "suicide", "murder", "pedophile", "paedophile",
+    "incest", "necrophilia", "zoophilia", "bestiality", "snatch", "coochie",
+    "cooter", "dong", "schlong", "balls", "ballsack", "nutsack", "pecker",
+    "pube", "pubes", "jizz", "jism", "spunk", "erection", "boner",
+    "deepthroat", "gangbang", "orgy", "threesome", "creampie",
+    # === RUSSIAN ===
+    "хуй", "хуя", "хуем", "хуёв", "хуило", "хуйня", "хуйло",
+    "пизда", "пизды", "пиздой", "пиздец", "пиздёж", "пиздобол",
+    "ёбаный", "ёбать", "ёбнуть", "ёбнутый", "блядь", "блядина", "блять",
+    "сука", "суки", "сучка", "сукин",
+    "мудак", "мудаки", "мудила",
+    "залупа", "говно", "говнюк",
+    "жопа", "жополиз", "шлюха", "шалава", "потаскуха",
+    "трахать", "трахнуть", "дрочить", "дрочка",
+    "гандон", "педик", "педераст", "пидор", "пидорас",
+    "долбоёб", "уёбок", "мразь", "тварь", "засранец",
+    "срать", "срака", "манда", "обсосок", "проститутка",
+    "сиськи", "член", "влагалище", "голый", "голая",
+    "порно", "порнография", "эротика", "секс", "насилие",
+    "убийство", "расчленение", "наркотик", "наркоман",
+    "ублюдок", "дебил", "даун", "кретин",
+    # Latin transliterations
+    "khuy", "pizda", "ebat", "blyad", "suka", "mudak", "pidor", "dolboyob",
+    # === KAZAKH ===
+    "қотақ", "қотақбас",
+    "ам",
+    "жалеп", "жалап",
+    "жезөкше", "жезтырнақ",
+    "сікпе", "сіктір",
+    "боқ", "боқмұрын",
+    "нас", "ұятсыз", "сиқ", "арсыз", "нәпсі",
+    "жексұрын", "нашақор", "маскүнем",
+    "жалаңаш", "жыныстық",
+    "доңыз", "шошқа", "иттің баласы", "сасық",
+    "бұзық", "сатқын", "бетсіз",
+    "аузыңа", "апаңды",
+    # Latin Kazakh
+    "kotak", "kotakbas", "siktir", "zhalep", "zhalap", "ambas", "sasyk",
+})
+
+
 def _check_prompt_safety(text: str) -> None:
-    if _BLOCKED_PATTERNS.search(text):
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "en": "Prompt contains inappropriate content. Please use appropriate language.",
-                "ru": "Запрос содержит недопустимый контент. Пожалуйста, используйте подходящие слова.",
-                "kk": "Сұраныста қолайсыз мазмұн бар. Өтінемін, тиісті сөздерді қолданыңыз.",
-            }
-        )
+    text_lower = text.lower()
+    if _BLOCKED_ROOTS.search(text_lower):
+        raise HTTPException(status_code=400, detail={
+            "en": "Prompt contains inappropriate content. Please use appropriate language.",
+            "ru": "Запрос содержит недопустимый контент. Пожалуйста, используйте подходящие слова.",
+            "kk": "Сұраныста қолайсыз мазмұн бар. Өтінемін, тиісті сөздерді қолданыңыз.",
+        })
+    words = set(re.findall(r'\b\w+\b', text_lower, re.UNICODE))
+    if words & _BLOCKED_WORDS:
+        raise HTTPException(status_code=400, detail={
+            "en": "Prompt contains inappropriate content. Please use appropriate language.",
+            "ru": "Запрос содержит недопустимый контент. Пожалуйста, используйте подходящие слова.",
+            "kk": "Сұраныста қолайсыз мазмұн бар. Өтінемін, тиісті сөздерді қолданыңыз.",
+        })
 
 
 async def _generate_image(prompt: str) -> str:
