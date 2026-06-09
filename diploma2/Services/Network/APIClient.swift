@@ -163,7 +163,7 @@ enum APIError: Error, LocalizedError {
         switch self {
         case .unauthorized:       return "Сессия истекла. Войдите снова."
         case .noConnection:       return "Нет подключения к интернету."
-        case .serverError(let code, let msg): return "Ошибка \(code): \(msg)"
+        case .serverError(_, let msg): return msg
         case .decodingError(let err): return "Ошибка данных: \(err.localizedDescription)"
         default:                  return "Что-то пошло не так."
         }
@@ -330,6 +330,22 @@ final class APIClient {
     }
 }
 
-private struct FastAPIError: Codable { let detail: String }
+private struct FastAPIError: Decodable {
+    let detail: String
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let str = try? container.decode(String.self, forKey: .detail) {
+            detail = str
+        } else if let dict = try? container.decode([String: String].self, forKey: .detail) {
+            let lang = UserDefaults.standard.string(forKey: "app_language") ?? "ru"
+            detail = dict[lang] ?? dict["ru"] ?? dict["en"] ?? "Ошибка запроса"
+        } else {
+            detail = "Ошибка запроса"
+        }
+    }
+
+    enum CodingKeys: String, CodingKey { case detail }
+}
 private struct EmptyBody: Encodable {}
 struct EmptyResponse: Codable {}
